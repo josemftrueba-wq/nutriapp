@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriApp</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo" id="sidebar-logo-wrap">
+    <img id="sidebar-logo-img" src="" alt="Logo">
+    <div id="sidebar-logo-text">
+      <h1>Nutri<span style="color:var(--salvia)">App</span></h1>
+      <p id="sidebar-subtitulo">Nutrición</p>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <a class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')"><span class="icon">🏠</span><span>Inicio</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Clientes</div>
+      <a class="nav-item" data-view="clientes" onclick="navigate('clientes')"><span class="icon">👤</span><span>Clientes</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Seguimiento</div>
+      <a class="nav-item" data-view="mediciones" onclick="navigate('mediciones')"><span class="icon">⚖️</span><span>Mediciones</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Nutrición</div>
+      <a class="nav-item" data-view="menus" onclick="navigate('menus')"><span class="icon">🥗</span><span>Menús</span></a>
+      <a class="nav-item" data-view="platos" onclick="navigate('platos')"><span class="icon">🍽️</span><span>Banco de platos</span></a>
+      <a class="nav-item" data-view="recetas" onclick="navigate('recetas')"><span class="icon">🌍</span><span>Recetas web</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Agenda</div>
+      <a class="nav-item" data-view="agenda" onclick="navigate('agenda')"><span class="icon">📅</span><span>Agenda</span></a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Comunicación</div>
+      <a class="nav-item" data-view="informes" onclick="navigate('informes')"><span class="icon">📊</span><span>Informes y envío</span></a>
+      <a class="nav-item" data-view="ia" onclick="navigate('ia')"><span class="icon">🤖</span><span>IA Nutricional</span></a>
+    </div>
+    <!-- Solo super_admin -->
+    <div class="nav-section" id="nav-admin" style="display:none">
+      <div class="nav-label">Administración</div>
+      <a class="nav-item" data-view="usuarios" onclick="navigate('usuarios')"><span class="icon">👥</span><span>Usuarios</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-name" id="sidebar-user-name">—</div>
+      <div class="user-role" id="sidebar-user-role">—</div>
+    </div>
+    <button onclick="openModal('modal-settings')" style="background:rgba(255,255,255,.12);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.9rem;flex-shrink:0;" title="Configuración">⚙️</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+<header id="topbar">
+  <h2 id="page-title">Inicio</h2>
+  <div class="topbar-actions" id="topbar-actions"></div>
+</header>
+<div id="content">
+
+<!-- DASHBOARD -->
+<div class="view active" id="view-dashboard">
+  <div id="dash-logo-wrap" style="display:none;text-align:center;padding:40px 0 20px">
+    <img id="dash-logo-img" src="" alt="Logo" style="width:min(90vw,480px);height:auto;object-fit:contain;">
+  </div>
+  <div id="dash-logo-text" style="text-align:center;padding:32px 0 20px">
+    <div style="font-family:'DM Serif Display',serif;font-size:3.2rem;color:var(--verde);line-height:1;letter-spacing:-1px;">Nutri<span style="color:var(--salvia)">App</span></div>
+    <div id="dash-subtitulo" style="font-size:.8rem;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--gris-400);margin-top:6px;"></div>
+  </div>
+  <div id="dash-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+    <div class="card"><div class="card-header"><h3>📅 Actividad esta semana</h3></div><div id="dash-ultimas-med" style="padding:8px 16px"></div></div>
+    <div class="card"><div class="card-header"><h3>⚡ Acciones rápidas</h3></div><div id="dash-alertas" style="padding:14px 16px"></div></div>
+  </div>
+</div>
+
+<!-- CLIENTES -->
+<div class="view" id="view-clientes">
+  <div class="flex items-center justify-between mb-6" style="flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div class="search-wrap" style="width:260px"><span class="search-icon">🔍</span><input class="form-control" id="search-clientes" placeholder="Buscar por nombre…" oninput="filtrarClientes()"></div>
+      <select class="form-control" id="sort-clientes" style="width:185px" onchange="filtrarClientes()">
+        <option value="nombre">Ordenar: A–Z</option>
+        <option value="ultima-med">Última medición</option>
+        <option value="createdAt">Fecha alta</option>
+      </select>
+    </div>
+  </div>
+  <div class="card"><div class="card-body" style="padding:0" id="tabla-clientes-wrap"></div></div>
+</div>
+
+<!-- DETALLE CLIENTE -->
+<div class="view" id="view-cliente-detalle">
+  <button class="btn btn-secondary btn-sm mb-6" onclick="navigate('clientes')">← Volver</button>
+  <div id="detalle-content"></div>
+</div>
+
+<!-- MEDICIONES -->
+<div class="view" id="view-mediciones">
+  <div class="flex items-center justify-between mb-6">
+    <div class="search-wrap" style="width:300px"><span class="search-icon">🔍</span><input class="form-control" id="search-mediciones" placeholder="Buscar por cliente…" oninput="filtrarMediciones()"></div>
+  </div>
+  <div class="card"><div class="card-body" style="padding:0" id="tabla-mediciones-wrap"></div></div>
+</div>
+
+<!-- MENÚS -->
+<div class="view" id="view-menus">
+  <div class="flex items-center justify-between mb-6" style="flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div class="search-wrap" style="width:220px"><span class="search-icon">🔍</span><input class="form-control" id="search-menus" placeholder="Buscar menú…" oninput="filtrarMenus()"></div>
+      <select class="form-control" id="filtro-menus-cli" style="width:200px" onchange="filtrarMenus()"><option value="">Todos los clientes</option></select>
+    </div>
+  </div>
+  <div id="menus-list-wrap"></div>
+</div>
+
+<!-- MENÚ DETALLE -->
+<div class="view" id="view-menu-detalle">
+  <button class="btn btn-secondary btn-sm mb-4" onclick="navigate('menus')">← Volver a menús</button>
+  <div id="menu-detalle-content"></div>
+</div>
+
+<!-- BANCO DE PLATOS -->
+<div class="view" id="view-platos">
+  <div class="flex items-center justify-between mb-6" style="flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="search-wrap" style="width:220px"><span class="search-icon">🔍</span><input class="form-control" id="search-platos" placeholder="Buscar plato…" oninput="filtrarPlatos()"></div>
+      <select class="form-control" id="filtro-cat-platos" style="width:165px" onchange="filtrarPlatos()">
+        <option value="">Todas</option><option>Desayuno</option><option>Almuerzo</option><option>Comida</option><option>Merienda</option><option>Cena</option><option>General</option>
+      </select>
+    </div>
+  </div>
+  <div id="platos-grid-wrap"></div>
+</div>
+
+<!-- RECETAS WEB -->
+<div class="view" id="view-recetas">
+  <div class="card mb-6">
+    <div class="card-header"><h3>🌍 TheMealDB — Buscar recetas</h3></div>
+    <div class="card-body">
+      <div class="flex gap-3">
+        <div class="search-wrap" style="flex:1"><span class="search-icon">🔍</span><input class="form-control" id="search-mealdb" placeholder="Buscar en inglés: chicken, pasta, salmon…" onkeydown="if(event.key==='Enter')buscarMealDB()"></div>
+        <button class="btn btn-primary" onclick="buscarMealDB()">Buscar</button>
+      </div>
+      <div id="mealdb-results" style="margin-top:16px"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3>⭐ Favoritas guardadas</h3></div>
+    <div class="card-body" id="recetas-favoritas-wrap" style="padding:16px"></div>
+  </div>
+</div>
+
+<!-- INFORMES -->
+<div class="view" id="view-informes">
+  <p class="text-sm text-muted mb-4" style="line-height:1.6">Genera PDFs de progreso y menú, envía por email o WhatsApp a tus clientes.</p>
+  <div id="informes-wrap"></div>
+</div>
+
+<!-- IA NUTRICIONAL -->
+<div class="view" id="view-ia">
+  <div class="ia-chat-wrap">
+    <div class="ia-chat-top">
+      <span style="font-size:1.6rem">🤖</span>
+      <div style="flex:1"><div style="font-weight:700;color:var(--verde)">Claude · Asistente Nutricional</div><div class="text-sm text-muted">Contexto completo de clientes, mediciones y menús</div></div>
+      <select class="form-control" id="ia-cliente-sel" style="width:200px"></select>
+      <button class="btn btn-secondary btn-sm" onclick="limpiarChatIA()">🗑️ Limpiar</button>
+    </div>
+    <div class="ia-quick-prompts" id="ia-quick-prompts"></div>
+    <div class="ia-chat-messages" id="ia-chat-messages">
+      <div class="ia-msg assistant">👋 Hola. Soy tu asistente IA nutricional. Puedo analizar la evolución de tus clientes, generar propuestas de menús, interpretar datos de la báscula o redactar mensajes. ¿En qué trabajamos?</div>
+    </div>
+    <div class="ia-input-row">
+      <textarea id="ia-input" placeholder="Escribe tu pregunta… (Intro para enviar, Shift+Intro para nueva línea)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMensajeIA();}"></textarea>
+      <button class="btn btn-primary" onclick="enviarMensajeIA()" id="btn-ia-send">Enviar ↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA -->
+<div id="view-agenda" class="view">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ambar btn-sm" onclick="abrirModalBloquearDia()">🚫 Día no disponible</button>
+      <button class="btn btn-primary" onclick="abrirModalCita()">+ Nueva cita</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:32% 68%;gap:16px;align-items:start">
+    <div class="card" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button class="btn btn-secondary btn-sm" onclick="cambiarMesCal(-1)">←</button>
+        <strong id="cal-titulo" style="font-size:.9rem"></strong>
+        <button class="btn btn-secondary btn-sm" onclick="cambiarMesCal(1)">→</button>
+      </div>
+      <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:.75rem"></div>
+      <div style="margin-top:10px;font-size:.7rem;color:var(--gris-400);display:flex;flex-direction:column;gap:3px">
+        <span><span style="color:var(--verde-claro)">●</span> Cita programada</span>
+        <span><span style="color:var(--ambar)">■</span> Día no disponible</span>
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-filter active" onclick="filtrarCitas('hoy',this)">Hoy</button>
+        <button class="btn btn-sm btn-filter" onclick="filtrarCitas('semana',this)">Esta semana</button>
+        <button class="btn btn-sm btn-filter" onclick="filtrarCitas('mes',this)">Este mes</button>
+        <button class="btn btn-sm btn-filter" onclick="filtrarCitas('todas',this)">Todas</button>
+      </div>
+      <div id="agenda-subtitulo" style="font-size:.8rem;color:var(--gris-400);margin-bottom:10px"></div>
+      <div id="agenda-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- USUARIOS (solo super_admin) -->
+<div class="view" id="view-usuarios">
+  <div class="card">
+    <div class="card-header">
+      <h3>👥 Gestión de usuarios</h3>
+      <button class="btn btn-secondary btn-sm" onclick="mostrarInstruccionesNuevoUsuario()">+ Invitar usuario</button>
+    </div>
+    <div class="card-body" id="tabla-usuarios-wrap"></div>
+  </div>
+</div>
+
+</div><!-- /#content -->
+</div><!-- /#main -->
+
+<!-- ══════════════════════════════════════════════════════════
+     MODALES
+══════════════════════════════════════════════════════════ -->
+
+<!-- MODAL CLIENTE -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-cliente-title">Nuevo cliente</h3><button class="modal-close" onclick="closeModal('modal-cliente')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cliente-id">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Nombre *</label><input class="form-control" id="c-nombre"></div>
+        <div class="form-group"><label>Apellidos *</label><input class="form-control" id="c-apellidos"></div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label>Fecha nacimiento</label><input class="form-control" id="c-fnac" type="date"></div>
+        <div class="form-group"><label>Sexo</label><select class="form-control" id="c-sexo"><option value="">—</option><option value="F">Femenino</option><option value="M">Masculino</option></select></div>
+        <div class="form-group"><label>Altura (cm)</label><input class="form-control" id="c-altura" type="number" placeholder="170"></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Teléfono</label><input class="form-control" id="c-telefono"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" id="c-email" type="email"></div>
+      </div>
+      <div class="form-group"><label>Objetivo</label><input class="form-control" id="c-objetivo" placeholder="Perder peso, mejorar composición…"></div>
+      <div class="form-group"><label>Notas</label><textarea class="form-control" id="c-notas" placeholder="Alergias, patologías, preferencias…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MEDICIÓN -->
+<div class="modal-overlay" id="modal-medicion">
+  <div class="modal modal-wide">
+    <div class="modal-header"><h3 id="modal-med-title">Nueva medición</h3><button class="modal-close" onclick="closeModal('modal-medicion')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="med-id">
+      <input type="hidden" id="med-pdf-base64">
+      <input type="hidden" id="med-pdf-name">
+      <!-- Zona PDF -->
+      <div id="pdf-drop-zone" class="pdf-drop-zone" onclick="triggerPdfPicker()"
+           ondragover="event.preventDefault();this.classList.add('dragging')"
+           ondragleave="this.classList.remove('dragging')"
+           ondrop="handlePdfDrop(event)">
+        <div class="pdf-drop-icon">🤖</div>
+        <div class="pdf-drop-text">
+          <strong>📄 PDF o 📷 imagen → Claude extrae los datos automáticamente</strong>
+          <span>Arrastra aquí el PDF, JPG o PNG del informe</span>
+        </div>
+        <input type="file" id="pdf-file-input" accept=".pdf,image/*" style="display:none" onchange="procesarArchivoInforme(this.files[0])">
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <div style="flex:1;height:1px;background:var(--gris-200)"></div>
+        <span style="font-size:.73rem;color:var(--gris-400);font-weight:600">O SI EL INFORME ES UNA URL</span>
+        <div style="flex:1;height:1px;background:var(--gris-200)"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <span style="font-size:1.1rem">🔗</span>
+        <input class="form-control" id="med-report-url" placeholder="Pega aquí la URL del informe…" style="font-size:.84rem">
+        <button class="btn btn-primary btn-sm" onclick="extraerDesdeUrl()">🤖 Extraer</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('med-report-url').value=''">✕</button>
+      </div>
+      <div class="pdf-extract-status" id="pdf-extract-status">
+        <div class="spinner"></div><span id="extract-msg">Claude está leyendo…</span>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Cliente *</label><select class="form-control" id="med-cliente"></select></div>
+        <div class="form-group"><label>Fecha y hora *</label><input class="form-control" id="med-fecha" type="datetime-local"></div>
+      </div>
+      <div class="form-section-title">📊 Composición corporal</div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Peso (kg)</label><input class="form-control" id="med-peso" type="number" step="0.01"></div>
+        <div class="form-group"><label>Puntuación salud</label><input class="form-control" id="med-puntuacion" type="number"></div>
+        <div class="form-group"><label>Agua corporal (kg)</label><input class="form-control" id="med-agua" type="number" step="0.1"></div>
+        <div class="form-group"><label>Masa proteica (kg)</label><input class="form-control" id="med-proteina" type="number" step="0.1"></div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Minerales (kg)</label><input class="form-control" id="med-minerales" type="number" step="0.1"></div>
+        <div class="form-group"><label>Masa grasa (kg)</label><input class="form-control" id="med-masa-grasa" type="number" step="0.1"></div>
+        <div class="form-group"><label>% Grasa</label><input class="form-control" id="med-pct-grasa" type="number" step="0.1"></div>
+        <div class="form-group"><label>Grasa subcutánea (kg)</label><input class="form-control" id="med-grasa-subcut" type="number" step="0.1"></div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>% Grasa subcut.</label><input class="form-control" id="med-pct-grasa-sub" type="number" step="0.1"></div>
+        <div class="form-group"><label>Grasa visceral</label><input class="form-control" id="med-gv" type="number"></div>
+        <div class="form-group"><label>MLG (kg)</label><input class="form-control" id="med-mlg" type="number" step="0.1"></div>
+        <div class="form-group"><label>Masa muscular (kg)</label><input class="form-control" id="med-masa-musc" type="number" step="0.1"></div>
+      </div>
+      <div class="form-section-title">💪 Musculoesquelético</div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Músculo esq. (kg)</label><input class="form-control" id="med-musc-esq" type="number" step="0.1"></div>
+        <div class="form-group"><label>% Músculo esq.</label><input class="form-control" id="med-pct-musc-esq" type="number" step="0.1"></div>
+        <div class="form-group"><label>Masa ósea (kg)</label><input class="form-control" id="med-osea" type="number" step="0.1"></div>
+        <div class="form-group"><label>FC (bpm)</label><input class="form-control" id="med-fc" type="number"></div>
+      </div>
+      <div class="form-section-title">💧 Hidratación y metabolismo</div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Agua extracelular (kg)</label><input class="form-control" id="med-agua-ec" type="number" step="0.1"></div>
+        <div class="form-group"><label>Agua intracelular (kg)</label><input class="form-control" id="med-agua-ic" type="number" step="0.1"></div>
+        <div class="form-group"><label>TMB (kcal)</label><input class="form-control" id="med-tmb" type="number"></div>
+        <div class="form-group"><label>Ingesta recomendada (kcal)</label><input class="form-control" id="med-ingesta-rec" type="number"></div>
+      </div>
+      <div class="form-section-title">📏 Índices</div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>IMC</label><input class="form-control" id="med-imc" type="number" step="0.1"></div>
+        <div class="form-group"><label>Nivel adiposidad</label><input class="form-control" id="med-nivel-adip" type="number" step="0.1"></div>
+        <div class="form-group"><label>% Proteínas</label><input class="form-control" id="med-pct-proteinas" type="number" step="0.1"></div>
+        <div class="form-group"><label>Cintura-cadera</label><input class="form-control" id="med-cc" type="number" step="0.01"></div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Edad corporal</label><input class="form-control" id="med-edad-corp" type="number"></div>
+        <div class="form-group"><label>Peso estándar (kg)</label><input class="form-control" id="med-peso-estandar" type="number" step="0.1"></div>
+        <div class="form-group"><label>Control peso</label><input class="form-control" id="med-control-peso" type="number" step="0.1"></div>
+        <div class="form-group"><label>Grado obesidad</label><input class="form-control" id="med-grado-obesidad"></div>
+      </div>
+      <div class="form-group mt-4"><label>Notas de la medición</label><textarea class="form-control" id="med-nota" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-medicion')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMedicion()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENÚ -->
+<div class="modal-overlay" id="modal-menu">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-menu-title">Nuevo menú</h3><button class="modal-close" onclick="closeModal('modal-menu')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="menu-id">
+      <div class="form-group"><label>Nombre del menú *</label><input class="form-control" id="menu-nombre" placeholder="Menú semana 1 — Pérdida de peso"></div>
+      <div class="form-group"><label>Cliente (opcional)</label><select class="form-control" id="menu-cliente"><option value="">Sin asignar</option></select></div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Fecha inicio</label><input class="form-control" id="menu-fecha-inicio" type="date"></div>
+        <div class="form-group"><label>Fecha fin</label><input class="form-control" id="menu-fecha-fin" type="date"></div>
+      </div>
+      <div class="form-group"><label>Notas / Recomendaciones</label><textarea class="form-control" id="menu-notas" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-menu')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarMenu()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLATO -->
+<div class="modal-overlay" id="modal-plato">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-plato-title">Nuevo plato</h3><button class="modal-close" onclick="closeModal('modal-plato')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="plato-id">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Nombre *</label><input class="form-control" id="p-nombre"></div>
+        <div class="form-group"><label>Categoría</label>
+          <select class="form-control" id="p-categoria">
+            <option>Desayuno</option><option>Almuerzo</option><option>Comida</option>
+            <option>Merienda</option><option>Cena</option><option>General</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group"><label>Tiempo (min)</label><input class="form-control" id="p-tiempo" type="number"></div>
+        <div class="form-group"><label>Kcal</label><input class="form-control" id="p-kcal" type="number"></div>
+        <div class="form-group"><label>Proteínas (g)</label><input class="form-control" id="p-proteinas" type="number" step="0.1"></div>
+        <div class="form-group"><label>Hidratos (g)</label><input class="form-control" id="p-hidratos" type="number" step="0.1"></div>
+      </div>
+      <div class="form-group"><label>Ingredientes</label><textarea class="form-control" id="p-ingredientes" rows="3"></textarea></div>
+      <div class="form-group"><label>Preparación</label><textarea class="form-control" id="p-preparacion" rows="3"></textarea></div>
+      <div class="form-group"><label>Notas</label><textarea class="form-control" id="p-notas" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-plato')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPlato()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CITA -->
+<div class="modal-overlay" id="modal-cita">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-cita-title">Nueva cita</h3><button class="modal-close" onclick="closeModal('modal-cita')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cita-id">
+      <div class="form-group"><label>Cliente</label><select class="form-control" id="cita-cliente"><option value="">Sin asignar</option></select></div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Fecha *</label><input class="form-control" id="cita-fecha" type="date"></div>
+        <div class="form-group"><label>Hora *</label><input class="form-control" id="cita-hora" type="time"></div>
+      </div>
+      <div class="form-group"><label>Motivo</label><input class="form-control" id="cita-motivo" placeholder="Revisión, primera consulta…"></div>
+      <div class="form-group"><label>Notas</label><textarea class="form-control" id="cita-notas" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cita')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCita()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BLOQUEAR DÍA -->
+<div class="modal-overlay" id="modal-bloquear-dia">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header"><h3>🚫 Marcar día no disponible</h3><button class="modal-close" onclick="closeModal('modal-bloquear-dia')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Fecha *</label><input class="form-control" id="bloqueo-fecha" type="date"></div>
+      <div class="form-group"><label>Tipo</label>
+        <select class="form-control" id="bloqueo-tipo">
+          <option value="vacaciones">Vacaciones</option>
+          <option value="festivo">Festivo</option>
+          <option value="formacion">Formación</option>
+          <option value="personal">Personal</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Motivo (opcional)</label><input class="form-control" id="bloqueo-motivo"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-bloquear-dia')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarDiaBloqueado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PICKER PLATOS (para menú) -->
+<div class="modal-overlay" id="modal-picker-platos">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header"><h3>🍽️ Seleccionar plato</h3><button class="modal-close" onclick="closeModal('modal-picker-platos')">✕</button></div>
+    <div class="modal-body">
+      <div class="search-wrap mb-4"><span class="search-icon">🔍</span><input class="form-control" id="picker-search" placeholder="Buscar plato…" oninput="filtrarPicker()"></div>
+      <div style="max-height:350px;overflow-y:auto" id="picker-lista"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RECETA DETALLE -->
+<div class="modal-overlay" id="modal-receta-detalle">
+  <div class="modal modal-wide">
+    <div class="modal-header"><h3 id="receta-detalle-titulo">Receta</h3><button class="modal-close" onclick="closeModal('modal-receta-detalle')">✕</button></div>
+    <div class="modal-body" id="receta-detalle-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-receta-detalle')">Cerrar</button>
+      <button class="btn btn-ambar" id="btn-guardar-fav" onclick="guardarFavorita()">⭐ Guardar favorita</button>
+      <button class="btn btn-primary" id="btn-importar-plato" onclick="importarComoPlato()">+ Importar al banco</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMACIÓN ELIMINAR -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3 id="confirm-title">Confirmar</h3><button class="modal-close" onclick="closeModal('modal-confirm')">✕</button></div>
+    <div class="modal-body">
+      <p id="confirm-msg" style="font-size:.9rem;line-height:1.6"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIGURACIÓN -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal modal-wide">
+    <div class="modal-header"><h3>⚙️ Configuración</h3><button class="modal-close" onclick="closeModal('modal-settings')">✕</button></div>
+    <div class="modal-body">
+
+      <div class="settings-section">
+        <h4>🎨 Identidad</h4>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label>Nombre de la app</label><input class="form-control" id="cfg-nombre-app" placeholder="NutriApp"></div>
+          <div class="form-group"><label>Subtítulo</label><input class="form-control" id="cfg-subtitulo" placeholder="Lourdes · Nutrición"></div>
+        </div>
+        <div class="form-group">
+          <label>Logo</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary btn-sm" onclick="subirLogo()">📁 Subir logo</button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarLogo()">🗑️ Quitar</button>
+            <span id="logo-status" class="text-sm text-muted"></span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="guardarConfigIdentidad()">💾 Guardar identidad</button>
+      </div>
+
+      <div class="settings-section">
+        <h4>🤖 Claude API Key</h4>
+        <p class="text-sm text-muted mb-4">Necesaria para extraer datos de PDFs e informes, y para el asistente IA.</p>
+        <div id="key-status-wrap" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <input class="form-control" id="settings-api-key" type="password" placeholder="sk-ant-api…" style="flex:1">
+          <button class="btn btn-primary btn-sm" onclick="guardarApiKey()">Guardar</button>
+          <button class="btn btn-danger btn-sm" onclick="borrarApiKey()">Borrar</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4>📧 EmailJS (envío de emails)</h4>
+        <div class="form-row form-row-3">
+          <div class="form-group"><label>Public Key</label><input class="form-control" id="ejs-key" placeholder="user_xxx"></div>
+          <div class="form-group"><label>Service ID</label><input class="form-control" id="ejs-service" placeholder="service_xxx"></div>
+          <div class="form-group"><label>Template ID</label><input class="form-control" id="ejs-template" placeholder="template_xxx"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="guardarEmailJS()">💾 Guardar EmailJS</button>
+          <span id="ejs-status" class="text-sm text-muted"></span>
+        </div>
+      </div>
+
+      <div class="settings-section" id="settings-usuarios-section" style="display:none">
+        <h4>👥 Sesión actual</h4>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div>
+            <div style="font-weight:600" id="settings-user-email">—</div>
+            <div class="text-sm text-muted" id="settings-user-rol">—</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="authLogout()">🚪 Cerrar sesión</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-settings')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+
+# Entornos
+.env
+.env.local
+.env.production
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Build
+dist/
+build/

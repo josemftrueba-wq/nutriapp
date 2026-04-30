@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriApp · Acceso</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --verde:#1e4035;--verde-med:#2d5c47;--verde-claro:#4a8c6f;
+  --salvia:#8ab99c;--menta:#c8e6d5;--crema:#f8f5ef;
+  --ambar:#c8883a;--rojo:#c04040;--rojo-claro:#fde8e8;
+  --gris-200:#e8e3d8;--gris-400:#9e9585;--gris-700:#4a4540;--gris-900:#2a2520;
+  --sombra:0 2px 12px rgba(30,64,53,.10);--sombra-lg:0 8px 32px rgba(30,64,53,.18);
+  --radio:12px;--radio-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;}
+body{
+  background:linear-gradient(135deg,var(--verde) 0%,var(--verde-med) 50%,#3d7058 100%);
+  display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;
+}
+.login-card {
+  background:#fff;border-radius:18px;box-shadow:var(--sombra-lg);
+  width:100%;max-width:420px;overflow:hidden;
+}
+.login-header {
+  background:linear-gradient(135deg,var(--verde) 0%,var(--verde-med) 100%);
+  padding:36px 32px 28px;text-align:center;
+}
+.login-logo {
+  font-family:'DM Serif Display',serif;font-size:2.8rem;color:#fff;
+  line-height:1;letter-spacing:-1px;
+}
+.login-logo span{color:var(--salvia);}
+.login-subtitle {
+  font-size:.75rem;font-weight:500;letter-spacing:3px;text-transform:uppercase;
+  color:var(--salvia);margin-top:6px;opacity:.85;
+}
+.login-body{padding:32px;}
+.form-group{margin-bottom:18px;}
+.form-group label{
+  display:block;font-size:.75rem;font-weight:600;color:var(--gris-700);
+  margin-bottom:6px;letter-spacing:.3px;text-transform:uppercase;
+}
+.form-control{
+  width:100%;padding:11px 13px;border-radius:var(--radio-sm);
+  border:1.5px solid var(--gris-200);background:#fff;
+  font-family:'DM Sans',sans-serif;font-size:.95rem;color:var(--gris-900);
+  transition:border-color .15s;
+}
+.form-control:focus{outline:none;border-color:var(--verde-claro);}
+.btn-login{
+  width:100%;padding:13px;border-radius:var(--radio-sm);border:none;
+  background:var(--verde);color:#fff;font-family:'DM Sans',sans-serif;
+  font-size:1rem;font-weight:700;cursor:pointer;transition:all .15s;
+  letter-spacing:.3px;margin-top:4px;
+}
+.btn-login:hover{background:var(--verde-med);}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;}
+.login-error{
+  background:var(--rojo-claro);color:var(--rojo);border:1px solid #f3c4c4;
+  border-radius:var(--radio-sm);padding:11px 14px;font-size:.85rem;
+  margin-bottom:16px;display:none;
+}
+.login-error.show{display:block;}
+.login-footer{
+  text-align:center;padding:16px 32px 24px;
+  font-size:.75rem;color:var(--gris-400);
+}
+.spinner-btn{
+  display:inline-block;width:16px;height:16px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.3);border-top-color:#fff;
+  animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.pwd-toggle{position:relative;}
+.pwd-toggle input{padding-right:42px;}
+.pwd-btn{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;font-size:1rem;color:var(--gris-400);
+  padding:2px;
+}
+</style>
+</head>
+<body>
+
+<div class="login-card">
+  <div class="login-header">
+    <div class="login-logo">Nutri<span>App</span></div>
+    <div class="login-subtitle">Gestión nutricional profesional</div>
+  </div>
+  <div class="login-body">
+    <div class="login-error" id="login-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input class="form-control" type="email" id="login-email"
+             placeholder="tu@email.com" autocomplete="email"
+             onkeydown="if(event.key==='Enter')document.getElementById('login-pwd').focus()">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <div class="pwd-toggle">
+        <input class="form-control" type="password" id="login-pwd"
+               placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="pwd-btn" onclick="togglePwd()" type="button">👁️</button>
+      </div>
+    </div>
+    <button class="btn-login" id="btn-login" onclick="doLogin()">
+      Entrar
+    </button>
+  </div>
+  <div class="login-footer">NutriApp v3.0 · Acceso restringido</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script>
+// Si ya hay sesión activa, ir directo a la app
+(async () => {
+  const user = await authGetSession();
+  if (user) window.location.href = 'app.html';
+})();
+
+function togglePwd() {
+  const inp = document.getElementById('login-pwd');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-pwd').value;
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('btn-login');
+
+  errEl.classList.remove('show');
+  if (!email || !pwd) {
+    errEl.textContent = 'Introduce email y contraseña.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-btn"></span>Entrando…';
+
+  try {
+    await authLogin(email, pwd);
+    window.location.href = 'app.html';
+  } catch (err) {
+    errEl.textContent = err.message === 'Invalid login credentials'
+      ? 'Email o contraseña incorrectos.'
+      : err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+  }
+}
+
+// Registrar service worker para PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
