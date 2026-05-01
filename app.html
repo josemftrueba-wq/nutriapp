@@ -53,6 +53,10 @@
       <div class="nav-label">Administración</div>
       <a class="nav-item" data-view="usuarios" onclick="navigate('usuarios')"><span class="icon">👥</span><span>Usuarios</span></a>
     </div>
+    <div class="nav-section">
+      <div class="nav-label">Ayuda</div>
+      <a class="nav-item" data-view="manual" onclick="navigate('manual')"><span class="icon">📖</span><span>Manual de uso</span></a>
+    </div>
   </div>
   <div class="sidebar-footer">
     <div class="user-info">
@@ -217,6 +221,11 @@
       <div id="agenda-lista"></div>
     </div>
   </div>
+</div>
+
+<!-- MANUAL DE USO -->
+<div class="view" id="view-manual">
+  <div id="manual-content"></div>
 </div>
 
 <!-- USUARIOS (solo super_admin) -->

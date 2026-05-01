@@ -24,7 +24,7 @@ const viewTitles = {
   dashboard:'Inicio', clientes:'Clientes', 'cliente-detalle':'Ficha cliente',
   mediciones:'Mediciones', menus:'Menús', 'menu-detalle':'Detalle menú',
   platos:'Banco de platos', recetas:'Recetas web', informes:'Informes y envío',
-  ia:'IA Nutricional', agenda:'Agenda', usuarios:'Usuarios'
+  ia:'IA Nutricional', agenda:'Agenda', usuarios:'Usuarios', manual:'Manual de uso'
 };
 
 // ════════════════════════════════════════════════════════════
@@ -215,6 +215,7 @@ function navigate(view, extra) {
   else if (view === 'ia')                     renderIA();
   else if (view === 'agenda')                 { renderCalendario(); cargarListaCitas(); }
   else if (view === 'usuarios')               renderUsuarios();
+  else if (view === 'manual')                 renderManual();
 }
 
 function renderTopbarActions(view) {
@@ -2077,6 +2078,128 @@ async function exportarMenuPDFActual() {
 
   doc.save(`menu_${m.nombre.replace(/\s/g,'_')}.pdf`);
   toast('✅ PDF del menú generado');
+}
+
+// ════════════════════════════════════════════════════════════
+//  MANUAL DE USO
+// ════════════════════════════════════════════════════════════
+function renderManual() {
+  const s = (titulo, icono, contenido) => `
+    <div class="card mb-6">
+      <div class="card-header"><h3>${icono} ${titulo}</h3></div>
+      <div class="card-body" style="font-size:.88rem;line-height:1.75">${contenido}</div>
+    </div>`;
+
+  document.getElementById('manual-content').innerHTML = `
+    <div style="max-width:860px;margin:0 auto">
+    <p style="color:var(--gris-400);margin-bottom:24px;font-size:.85rem">Guía completa de NutriApp. Usa el menú lateral para navegar entre secciones.</p>
+
+    ${s('Clientes','👤',`
+      <p><strong>Crear cliente:</strong> botón <em>"+ Nuevo cliente"</em>. Rellena nombre, apellidos y datos opcionales (fecha de nacimiento, sexo, altura, teléfono, email, objetivo).</p>
+      <p><strong>Ficha del cliente:</strong> haz clic en cualquier cliente de la lista para ver su ficha completa con cuatro pestañas:</p>
+      <ul>
+        <li><strong>Historial mediciones</strong> — todas las mediciones ordenadas por fecha.</li>
+        <li><strong>Menús</strong> — menús asignados al cliente.</li>
+        <li><strong>Citas</strong> — historial de visitas.</li>
+        <li><strong>Bitácora</strong> — notas, objetivos y alertas internas.</li>
+      </ul>
+      <p>Desde la ficha puedes crear nuevas mediciones, menús y citas directamente para ese cliente con los botones de la cabecera.</p>
+    `)}
+
+    ${s('Mediciones','⚖️',`
+      <p><strong>Nueva medición:</strong> botón <em>"⚖️ Medición"</em> en la ficha del cliente o en la barra superior de la sección Mediciones.</p>
+      <p><strong>Cargar informe PDF:</strong> arrastra el PDF de la báscula al recuadro de la zona inferior del formulario. La app extrae los datos automáticamente si tienes configurada la API de Claude.</p>
+      <p><strong>URL del informe:</strong> pega la URL pública del informe (la que genera la báscula). Esta URL se incluye automáticamente en el mensaje de WhatsApp/email que se envía al cliente.</p>
+      <p><strong>Enviar informe al cliente:</strong> en el historial de mediciones de la ficha del cliente, cada medición con URL guardada muestra los iconos 📱 (WhatsApp) y 📧 (Email) en la columna Acciones.</p>
+      <p>El mensaje incluye: peso, % grasa, masa muscular, puntuación y el enlace al informe completo.</p>
+    `)}
+
+    ${s('Menús','🥗',`
+      <p><strong>Crear menú:</strong> botón <em>"+ Nuevo menú"</em>. Puedes asignarlo a un cliente o dejarlo sin asignar como plantilla.</p>
+      <p><strong>Plantillas:</strong> en la lista de menús ya existen 5 plantillas reales (A, B, C, D y FODMAP). Para usarlas con un cliente, ábrelas y edita los datos (nombre y cliente) con el botón de edición.</p>
+      <p><strong>Editar el grid:</strong> haz clic en cada celda del grid semanal para escribir lo que corresponde a ese día y comida. Pulsa <em>"💾 Guardar"</em> para conservar los cambios.</p>
+      <p><strong>Generar con IA:</strong> botón <em>"🤖 IA"</em> — genera el menú automáticamente según el perfil del cliente (requiere API Claude).</p>
+      <p><strong>Enviar menú:</strong> desde el detalle del menú, botones <em>"📱 WA"</em> y <em>"📧 Email"</em> en la barra superior.</p>
+      <p><strong>Exportar PDF:</strong> botón <em>"📄 PDF"</em> — genera un PDF imprimible del menú.</p>
+    `)}
+
+    ${s('Banco de platos','🍽️',`
+      <p>Repositorio de recetas propias. Cada plato tiene: nombre, categoría, tiempo, kcal, proteínas, hidratos, ingredientes y preparación.</p>
+      <p><strong>Nuevo plato:</strong> botón <em>"+ Nuevo plato"</em>.</p>
+      <p><strong>Importar de internet:</strong> botón <em>"🌍 Importar TheMealDB"</em> — busca recetas en español (la app traduce automáticamente), luego haz clic en una receta y pulsa <em>"Importar al banco"</em>.</p>
+      <p><strong>Traducir con IA:</strong> dentro de cada receta, si tienes API Claude configurada, aparece el botón <em>"🤖 Traducir al español + info nutricional"</em>. Esto traduce ingredientes e instrucciones y añade kcal/proteínas/hidratos al importar.</p>
+      <p>Los platos del banco se pueden seleccionar al rellenar el grid de un menú.</p>
+    `)}
+
+    ${s('Recetas web','🌍',`
+      <p>Buscador de recetas de TheMealDB. Busca en español: "pollo", "salmón", "lentejas", "merluza", etc.</p>
+      <p>Haz clic en una receta para ver ingredientes e instrucciones. Puedes guardarla como favorita o importarla al banco de platos.</p>
+      <p><strong>Nota:</strong> TheMealDB solo dispone de datos en inglés. Con la API de Claude puedes traducir y obtener info nutricional con un clic.</p>
+    `)}
+
+    ${s('Agenda','📅',`
+      <p><strong>Nueva cita:</strong> haz clic en un día del calendario o en el botón <em>"+ Nueva cita"</em>.</p>
+      <p><strong>Filtros:</strong> Hoy / Esta semana / Este mes / Todas.</p>
+      <p><strong>Comunicar la cita:</strong> cada cita en la lista muestra (si el cliente tiene teléfono/email):</p>
+      <ul>
+        <li>📱✅ WhatsApp de confirmación</li>
+        <li>📱🔔 WhatsApp de recordatorio</li>
+        <li>📧✅ Email de confirmación</li>
+        <li>📧🔔 Email de recordatorio</li>
+      </ul>
+      <p>Al pulsar cualquiera de estos botones se abre WhatsApp (o se envía el email) con el mensaje ya redactado.</p>
+      <p><strong>Días bloqueados:</strong> solo el super_admin puede marcar días como no disponibles.</p>
+    `)}
+
+    ${s('Informes y envío','📊',`
+      <p>Vista centralizada de comunicación con el cliente. Selecciona un cliente y accede a:</p>
+      <ul>
+        <li><strong>📄 PDF de progreso</strong> — genera un informe PDF con el historial de mediciones.</li>
+        <li><strong>📱 WhatsApp Progreso</strong> — envía resumen de la última medición por WhatsApp.</li>
+        <li><strong>📱 WhatsApp Menú</strong> — envía el menú semanal más reciente por WhatsApp.</li>
+        <li><strong>📧 Email</strong> — envía el informe por email (requiere EmailJS configurado).</li>
+      </ul>
+    `)}
+
+    ${s('IA Nutricional','🤖',`
+      <p>Asistente de inteligencia artificial basado en Claude (Anthropic). Requiere API key configurada.</p>
+      <p>Selecciona un cliente para que la IA tenga contexto (mediciones y objetivo) y escribe tu consulta o usa los prompts rápidos:</p>
+      <ul>
+        <li>Analizar evolución del cliente</li>
+        <li>Generar menú semanal personalizado</li>
+        <li>Interpretar datos de la última medición</li>
+        <li>Redactar mensaje motivador</li>
+        <li>Sugerencias para mejorar composición corporal</li>
+      </ul>
+    `)}
+
+    ${s('Configuración','⚙️',`
+      <p>Accesible desde el icono ⚙️ en la esquina inferior del menú lateral. Solo el <strong>super_admin</strong> puede guardar cambios.</p>
+      <ul>
+        <li><strong>Logo:</strong> sube la imagen corporativa. Se muestra en la pantalla de inicio y en los PDFs.</li>
+        <li><strong>Nombre y subtítulo:</strong> personaliza el nombre que aparece en la app.</li>
+        <li><strong>API Claude:</strong> clave para activar la IA (extracción PDF, generación de menús, traducción de recetas).</li>
+        <li><strong>EmailJS:</strong> tres claves necesarias para el envío de emails (Public Key, Service ID, Template ID).</li>
+      </ul>
+    `)}
+
+    ${s('WhatsApp — cómo funciona','📱',`
+      <p>Al pulsar cualquier botón de WhatsApp, la app abre WhatsApp en tu dispositivo con el mensaje ya escrito y el número del cliente pre-rellenado.</p>
+      <p><strong>Tú siempre tienes que pulsar "Enviar"</strong> — la app nunca envía mensajes automáticamente.</p>
+      <p>El mensaje sale desde <strong>tu propio número de WhatsApp</strong> (el que tengas iniciado sesión en ese dispositivo).</p>
+      <p>Si usas la app en el móvil → abre la app de WhatsApp. Si la usas en el PC → abre WhatsApp Web.</p>
+    `)}
+
+    ${s('Roles de usuario','👥',`
+      <p>La app tiene dos roles:</p>
+      <ul>
+        <li><strong>super_admin:</strong> acceso total — puede crear, editar, eliminar y acceder a la configuración.</li>
+        <li><strong>nutricionista:</strong> puede crear y editar, pero no eliminar registros.</li>
+      </ul>
+      <p>Los roles los gestiona el super_admin desde la sección <em>Usuarios</em> del menú lateral.</p>
+    `)}
+
+    </div>`;
 }
 
 // ════════════════════════════════════════════════════════════
