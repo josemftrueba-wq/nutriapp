@@ -2,7 +2,7 @@
 //  NutriApp — Service Worker (PWA)
 // ════════════════════════════════════════════════════════════
 
-const CACHE = 'nutriapp-v3';
+const CACHE = 'nutriapp-v4';
 const STATIC = [
   '/',
   '/index.html',
