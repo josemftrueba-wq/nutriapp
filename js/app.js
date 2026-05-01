@@ -399,6 +399,17 @@ async function renderDetalleCliente(id) {
     </div>`;
   }
 
+  // Botones envío báscula
+  const envioHtml = ultima ? `
+    <div class="card mb-6" style="padding:14px 18px">
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gris-400);margin-bottom:10px">📤 Enviar última medición</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${c.telefono ? `<button class="btn btn-success btn-sm" onclick="enviarWhatsApp('${id}','progreso')">📱 WhatsApp</button>` : ''}
+        ${c.email    ? `<button class="btn btn-secondary btn-sm" onclick="enviarEmail('${id}','progreso')">📧 Email</button>` : ''}
+        ${!c.telefono && !c.email ? '<span class="text-muted text-sm">Sin teléfono ni email en la ficha</span>' : ''}
+      </div>
+    </div>` : '';
+
   // Historial mediciones
   const filas = renderTablaHistorial(meds, id);
 
@@ -439,7 +450,7 @@ async function renderDetalleCliente(id) {
       <div class="card-body"><div class="chart-container"><canvas id="chart-cliente-${id}"></canvas></div></div>
     </div>` : '';
 
-  document.getElementById('detalle-content').innerHTML = header + statsHtml + graficaHtml + `
+  document.getElementById('detalle-content').innerHTML = header + statsHtml + envioHtml + graficaHtml + `
     <div class="tabs">
       <div class="tab active" onclick="switchTab(this,'tab-historial-${id}')">📊 Historial mediciones</div>
       <div class="tab" onclick="switchTab(this,'tab-menus-${id}')">🥗 Menús</div>
