@@ -400,15 +400,18 @@ async function renderDetalleCliente(id) {
   }
 
   // Botones envío báscula
-  const envioHtml = ultima ? `
+  const ultimaConUrl = meds.slice().reverse().find(m => m.reportUrl);
+  const envioHtml = `
     <div class="card mb-6" style="padding:14px 18px">
-      <div style="font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gris-400);margin-bottom:10px">📤 Enviar última medición</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${c.telefono ? `<button class="btn btn-success btn-sm" onclick="enviarWhatsApp('${id}','progreso')">📱 WhatsApp</button>` : ''}
-        ${c.email    ? `<button class="btn btn-secondary btn-sm" onclick="enviarEmail('${id}','progreso')">📧 Email</button>` : ''}
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gris-400);margin-bottom:10px">📤 Enviar informe de báscula</div>
+      ${!ultima ? '<p class="text-muted text-sm">Sin mediciones registradas todavía.</p>' : `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${c.telefono ? `<button class="btn btn-success btn-sm" onclick="enviarWhatsAppBascula('${id}')">📱 WhatsApp</button>` : ''}
+        ${c.email    ? `<button class="btn btn-secondary btn-sm" onclick="enviarEmailBascula('${id}')">📧 Email</button>` : ''}
         ${!c.telefono && !c.email ? '<span class="text-muted text-sm">Sin teléfono ni email en la ficha</span>' : ''}
-      </div>
-    </div>` : '';
+        ${ultimaConUrl ? `<span class="text-muted text-sm" style="font-size:.72rem">URL: ${ultimaConUrl.reportUrl.substring(0,40)}…</span>` : '<span class="text-muted text-sm" style="font-size:.72rem">⚠️ Sin URL de informe en la última medición</span>'}
+      </div>`}
+    </div>`;
 
   // Historial mediciones
   const filas = renderTablaHistorial(meds, id);
@@ -1322,17 +1325,83 @@ function verRecetaModal(meal) {
     const med = meal['strMeasure'+i];
     if (ing && ing.trim()) ingreds.push(`${med ? med.trim()+' ' : ''}${ing.trim()}`);
   }
+  const apiKey = getApiKey();
   document.getElementById('receta-detalle-body').innerHTML = `
     <div style="display:flex;gap:20px;flex-wrap:wrap">
       <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="width:200px;border-radius:10px;object-fit:cover">
       <div style="flex:1;min-width:200px">
         <div class="badge badge-verde mb-4">${meal.strCategory||''} · ${meal.strArea||''}</div>
-        <h4 style="margin-bottom:10px;color:var(--verde)">Ingredientes</h4>
-        <ul style="font-size:.85rem;line-height:1.8;padding-left:16px">${ingreds.map(i=>`<li>${i}</li>`).join('')}</ul>
+        ${apiKey ? `<button class="btn btn-ambar btn-sm mb-4" onclick="traducirRecetaConIA()">🤖 Traducir al español + info nutricional</button>` : `<p class="text-muted text-sm mb-4" style="font-size:.75rem">⚠️ Ingredientes en inglés (configura API Claude para traducir automáticamente)</p>`}
+        <h4 style="margin-bottom:10px;color:var(--verde)" id="receta-ing-titulo">Ingredientes</h4>
+        <ul id="receta-ing-lista" style="font-size:.85rem;line-height:1.8;padding-left:16px">${ingreds.map(i=>`<li>${i}</li>`).join('')}</ul>
       </div>
     </div>
-    ${meal.strInstructions ? `<div class="mt-4"><h4 style="color:var(--verde);margin-bottom:8px">Preparación</h4><p style="font-size:.84rem;line-height:1.75">${meal.strInstructions}</p></div>` : ''}`;
+    <div id="receta-instrucciones">${meal.strInstructions ? `<div class="mt-4"><h4 style="color:var(--verde);margin-bottom:8px">Preparación</h4><p style="font-size:.84rem;line-height:1.75">${meal.strInstructions}</p></div>` : ''}</div>
+    <div id="receta-nutricion"></div>`;
   openModal('modal-receta-detalle');
+}
+
+async function traducirRecetaConIA() {
+  const meal = _recetaModal;
+  if (!meal) return;
+  const apiKey = getApiKey();
+  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
+
+  const btn = document.querySelector('#receta-detalle-body .btn-ambar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Traduciendo…'; }
+
+  const ingreds = [];
+  for (let i = 1; i <= 20; i++) {
+    const ing = meal['strIngredient'+i];
+    const med = meal['strMeasure'+i];
+    if (ing && ing.trim()) ingreds.push(`${med ? med.trim()+' ' : ''}${ing.trim()}`);
+  }
+
+  const prompt = `Traduce al español esta receta y estima la información nutricional aproximada por ración.
+
+Nombre: ${meal.strMeal}
+Ingredientes: ${ingreds.join(', ')}
+Instrucciones: ${(meal.strInstructions||'').substring(0, 800)}
+
+Responde SOLO con este JSON:
+{
+  "nombre": "nombre en español",
+  "ingredientes": ["ingrediente 1", "ingrediente 2"],
+  "instrucciones": "instrucciones en español (máx 300 palabras)",
+  "kcal": 000,
+  "proteinas": 00,
+  "hidratos": 00,
+  "grasas": 00
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const json = JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
+
+    document.getElementById('receta-ing-titulo').textContent = 'Ingredientes';
+    document.getElementById('receta-ing-lista').innerHTML = json.ingredientes.map(i=>`<li>${i}</li>`).join('');
+    document.getElementById('receta-instrucciones').innerHTML = `<div class="mt-4"><h4 style="color:var(--verde);margin-bottom:8px">Preparación</h4><p style="font-size:.84rem;line-height:1.75">${json.instrucciones}</p></div>`;
+    document.getElementById('receta-nutricion').innerHTML = `
+      <div class="mt-4" style="background:var(--menta);border-radius:8px;padding:12px 16px">
+        <h4 style="color:var(--verde);margin-bottom:8px">Información nutricional (estimada por ración)</h4>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:.85rem">
+          <span>⚡ <strong>${json.kcal}</strong> kcal</span>
+          <span>🥩 <strong>${json.proteinas}g</strong> proteínas</span>
+          <span>🍞 <strong>${json.hidratos}g</strong> hidratos</span>
+          <span>🫒 <strong>${json.grasas}g</strong> grasas</span>
+        </div>
+      </div>`;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Traducido'; }
+    _recetaModal._traduccion = json;
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Traducir al español + info nutricional'; }
+    toast('Error al traducir: ' + e.message, true);
+  }
 }
 
 async function guardarFavorita() {
@@ -1360,12 +1429,16 @@ async function importarComoPlato() {
     const med = m['strMeasure'+i];
     if (ing?.trim()) ingreds.push(`${med?.trim()||''} ${ing.trim()}`.trim());
   }
+  const t = m._traduccion;
   await DB.add('platos', {
-    nombre: m.strMeal,
+    nombre: t ? t.nombre : m.strMeal,
     categoria: 'Comida',
-    ingredientes: ingreds.join(', '),
-    preparacion: m.strInstructions || '',
-    imagen: m.strMealThumb
+    ingredientes: t ? t.ingredientes.join(', ') : ingreds.join(', '),
+    preparacion: t ? t.instrucciones : (m.strInstructions || ''),
+    imagen: m.strMealThumb,
+    kcal: t?.kcal || null,
+    proteinas: t?.proteinas || null,
+    hidratos: t?.hidratos || null
   });
   closeModal('modal-receta-detalle');
   toast('✅ Importado al banco de platos');
@@ -1658,6 +1731,54 @@ async function generarInformePDF(clienteId) {
 
   doc.save(`informe_${c.nombre}_${c.apellidos}_${new Date().toISOString().slice(0,10)}.pdf`);
   toast('✅ PDF generado');
+}
+
+async function enviarWhatsAppBascula(clienteId) {
+  const c    = await DB.get('clientes', clienteId);
+  if (!c?.telefono) { toast('El cliente no tiene teléfono', true); return; }
+  const meds = await DB.where('mediciones', 'clienteId', clienteId, { orderBy: 'fecha' });
+  const ultima = meds.at(-1);
+  if (!ultima) { toast('Sin mediciones', true); return; }
+
+  const urlInforme = meds.slice().reverse().find(m => m.reportUrl)?.reportUrl;
+  let msg = `Hola ${c.nombre} 👋 Aquí tienes los resultados de tu última medición:\n`;
+  msg += `• Peso: ${ultima.peso||'—'} kg\n`;
+  msg += `• % Grasa: ${ultima.pctGrasa||'—'}%\n`;
+  msg += `• Masa muscular: ${ultima.masaMusc||'—'} kg\n`;
+  msg += `• Puntuación: ${ultima.puntuacion||'—'}\n`;
+  if (urlInforme) msg += `\n📊 Tu informe completo: ${urlInforme}`;
+  msg += `\n\n¡Seguimos trabajando! 💪`;
+
+  const phone = c.telefono.replace(/\D/g,'');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+async function enviarEmailBascula(clienteId) {
+  const c    = await DB.get('clientes', clienteId);
+  if (!c?.email) { toast('El cliente no tiene email', true); return; }
+  const meds = await DB.where('mediciones', 'clienteId', clienteId, { orderBy: 'fecha' });
+  const ultima = meds.at(-1);
+  if (!ultima) { toast('Sin mediciones', true); return; }
+
+  const urlInforme = meds.slice().reverse().find(m => m.reportUrl)?.reportUrl;
+  const cfg = _appConfig;
+
+  const message = `Hola ${c.nombre},\n\nAquí tienes los resultados de tu última medición:\n• Peso: ${ultima.peso||'—'} kg\n• % Grasa: ${ultima.pctGrasa||'—'}%\n• Masa muscular: ${ultima.masaMusc||'—'} kg\n• Puntuación: ${ultima.puntuacion||'—'}\n${urlInforme ? `\nInforme completo: ${urlInforme}\n` : ''}\n¡Seguimos trabajando! 💪`;
+
+  if (!cfg.ejsKey || !cfg.ejsService || !cfg.ejsTemplate) {
+    await navigator.clipboard.writeText(message).catch(()=>{});
+    toast('Texto copiado al portapapeles (configura EmailJS para enviar directo)');
+    return;
+  }
+  try {
+    await emailjs.send(cfg.ejsService, cfg.ejsTemplate, {
+      to_email: c.email, to_name: `${c.nombre} ${c.apellidos}`,
+      from_name: cfg.nombreApp || 'NutriApp',
+      subject: 'Resultados de tu medición',
+      message
+    });
+    toast('✅ Email enviado');
+  } catch(e) { toast('Error enviando email: ' + e.message, true); }
 }
 
 async function enviarWhatsApp(clienteId, tipo) {
