@@ -8,6 +8,7 @@
 // ── Estado global ─────────────────────────────────────────────
 let currentView = 'dashboard';
 let _menuActualId = null;
+let _menuActualClienteId = null;
 let _pdfBase64Actual = null;
 let _pdfNameActual = null;
 let _recetaActual = null;
@@ -223,7 +224,7 @@ function renderTopbarActions(view) {
   else if (view === 'clientes')   el.innerHTML = `<button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo cliente</button>${cfg}`;
   else if (view === 'cliente-detalle') el.innerHTML = `<button class="btn btn-primary" onclick="abrirModalMedicion()">⚖️ Nueva medición</button>${cfg}`;
   else if (view === 'menus')      el.innerHTML = `<button class="btn btn-primary" onclick="abrirModalMenu()">+ Nuevo menú</button>${cfg}`;
-  else if (view === 'menu-detalle') el.innerHTML = `<button class="btn btn-success btn-sm" onclick="guardarGridMenu()">💾 Guardar</button><button class="btn btn-secondary btn-sm" onclick="exportarMenuPDFActual()">📄 PDF</button><button class="btn btn-ambar btn-sm" onclick="generarMenuConIA()">🤖 IA</button>${cfg}`;
+  else if (view === 'menu-detalle') el.innerHTML = `<button class="btn btn-success btn-sm" onclick="guardarGridMenu()">💾 Guardar</button><button class="btn btn-secondary btn-sm" onclick="exportarMenuPDFActual()">📄 PDF</button><button class="btn btn-success btn-sm" onclick="enviarWhatsApp(_menuActualClienteId,'menu')">📱 WA</button><button class="btn btn-secondary btn-sm" onclick="enviarEmailMenu(_menuActualId)">📧 Email</button><button class="btn btn-ambar btn-sm" onclick="generarMenuConIA()">🤖 IA</button>${cfg}`;
   else if (view === 'platos')     el.innerHTML = `<button class="btn btn-primary" onclick="abrirModalPlato()">+ Nuevo plato</button>${cfg}`;
   else                            el.innerHTML = cfg;
 }
@@ -1018,6 +1019,7 @@ function confirmarEliminarMenu(id) {
 async function renderMenuDetalle(menuId) {
   _menuActualId = menuId;
   const m = await DB.get('menus', menuId);
+  _menuActualClienteId = m?.clienteId || null;
   if (!m) { navigate('menus'); return; }
 
   const cliente = m.clienteId ? await DB.get('clientes', m.clienteId) : null;
@@ -1487,6 +1489,8 @@ async function cargarListaCitas(filtro = 'hoy') {
         <div class="text-sm text-muted">${ci.motivo||'—'}</div>
       </div>
       <div class="td-actions">
+        ${c?.telefono ? `<button class="btn-icon" title="Confirmar cita por WhatsApp" onclick="enviarWhatsAppCita('${ci.id}','confirmar')">📱✅</button><button class="btn-icon" title="Recordatorio por WhatsApp" onclick="enviarWhatsAppCita('${ci.id}','recordatorio')">📱🔔</button>` : ''}
+        ${c?.email ? `<button class="btn-icon" title="Confirmar cita por Email" onclick="enviarEmailCita('${ci.id}','confirmar')">📧✅</button><button class="btn-icon" title="Recordatorio por Email" onclick="enviarEmailCita('${ci.id}','recordatorio')">📧🔔</button>` : ''}
         <button class="btn-icon" onclick="editarCita('${ci.id}')">✏️</button>
         <button class="btn-icon" onclick="confirmarEliminarCita('${ci.id}')">🗑️</button>
       </div>
@@ -1718,6 +1722,96 @@ async function enviarEmail(clienteId, tipo) {
       message: `Hola ${c.nombre}, adjuntamos tu informe de progreso.`
     });
     toast('✅ Email enviado');
+  } catch(e) { toast('Error enviando email: ' + e.message, true); }
+}
+
+async function enviarWhatsAppCita(citaId, tipo) {
+  const ci = await DB.get('citas', citaId);
+  const c  = ci.clienteId ? await DB.get('clientes', ci.clienteId) : null;
+  if (!c?.telefono) { toast('El cliente no tiene teléfono', true); return; }
+
+  const fecha = ci.fecha ? new Date(ci.fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }) : '—';
+  const hora  = ci.hora || '';
+
+  let msg;
+  if (tipo === 'confirmar') {
+    msg = `Hola ${c.nombre} 👋 Te confirmo tu cita el ${fecha}${hora ? ' a las ' + hora : ''}. Cualquier cambio no dudes en avisarme. ¡Hasta pronto! 😊`;
+  } else {
+    msg = `Hola ${c.nombre} 🔔 Te recuerdo que tienes cita mañana ${fecha}${hora ? ' a las ' + hora : ''}. ¡Te espero!`;
+  }
+
+  const phone = c.telefono.replace(/\D/g,'');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+async function enviarEmailCita(citaId, tipo) {
+  const ci  = await DB.get('citas', citaId);
+  const c   = ci.clienteId ? await DB.get('clientes', ci.clienteId) : null;
+  if (!c?.email) { toast('El cliente no tiene email', true); return; }
+
+  const fecha = ci.fecha ? new Date(ci.fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }) : '—';
+  const hora  = ci.hora || '';
+  const cfg   = _appConfig;
+
+  const subject = tipo === 'confirmar' ? 'Confirmación de cita' : 'Recordatorio de cita';
+  const message = tipo === 'confirmar'
+    ? `Hola ${c.nombre},\n\nTe confirmo tu cita el ${fecha}${hora ? ' a las ' + hora : ''}.\n\nCualquier cambio no dudes en avisarme.\n\n¡Hasta pronto!`
+    : `Hola ${c.nombre},\n\nTe recuerdo que tienes cita mañana ${fecha}${hora ? ' a las ' + hora : ''}.\n\n¡Te espero!`;
+
+  if (!cfg.ejsKey || !cfg.ejsService || !cfg.ejsTemplate) {
+    await navigator.clipboard.writeText(message).catch(()=>{});
+    toast('Texto copiado al portapapeles (configura EmailJS para enviar directo)');
+    return;
+  }
+
+  try {
+    await emailjs.send(cfg.ejsService, cfg.ejsTemplate, {
+      to_email: c.email, to_name: `${c.nombre} ${c.apellidos}`,
+      from_name: cfg.nombreApp || 'NutriApp', subject, message
+    });
+    toast('✅ Email enviado');
+  } catch(e) { toast('Error enviando email: ' + e.message, true); }
+}
+
+async function enviarEmailMenu(menuId) {
+  const m   = menuId ? await DB.get('menus', menuId) : null;
+  const c   = m?.clienteId ? await DB.get('clientes', m.clienteId) : null;
+  if (!c) { toast('Este menú no tiene cliente asignado', true); return; }
+  if (!c.email) { toast('El cliente no tiene email', true); return; }
+
+  const dias = await DB.where('menu_dias', 'menuId', menuId);
+  const diasMap = Object.fromEntries(dias.map(d => [d.dia, d.datos || {}]));
+  const orden = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+  const comidas = ['desayuno','almuerzo','comida','merienda','cena'];
+
+  let cuerpo = `Hola ${c.nombre},\n\nAquí tienes tu menú semanal "${m.nombre}":\n\n`;
+  for (const dia of orden) {
+    const d = diasMap[dia];
+    if (!d) continue;
+    cuerpo += `── ${dia} ──\n`;
+    for (const com of comidas) {
+      if (d[com]) cuerpo += `  ${com.charAt(0).toUpperCase()+com.slice(1)}: ${d[com]}\n`;
+    }
+    cuerpo += '\n';
+  }
+  if (m.notas) cuerpo += `Recomendaciones:\n${m.notas}\n`;
+  cuerpo += '\n¡Mucho ánimo! 💪';
+
+  const cfg = _appConfig;
+  if (!cfg.ejsKey || !cfg.ejsService || !cfg.ejsTemplate) {
+    await navigator.clipboard.writeText(cuerpo).catch(()=>{});
+    toast('Menú copiado al portapapeles (configura EmailJS para enviar directo)');
+    return;
+  }
+
+  try {
+    await emailjs.send(cfg.ejsService, cfg.ejsTemplate, {
+      to_email: c.email, to_name: `${c.nombre} ${c.apellidos}`,
+      from_name: cfg.nombreApp || 'NutriApp',
+      subject: `Tu menú semanal — ${m.nombre}`,
+      message: cuerpo
+    });
+    toast('✅ Menú enviado por email');
   } catch(e) { toast('Error enviando email: ' + e.message, true); }
 }
 
