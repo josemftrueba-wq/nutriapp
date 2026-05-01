@@ -399,19 +399,7 @@ async function renderDetalleCliente(id) {
     </div>`;
   }
 
-  // Botones envío báscula
-  const ultimaConUrl = meds.slice().reverse().find(m => m.reportUrl);
-  const envioHtml = `
-    <div class="card mb-6" style="padding:14px 18px">
-      <div style="font-size:.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--gris-400);margin-bottom:10px">📤 Enviar informe de báscula</div>
-      ${!ultima ? '<p class="text-muted text-sm">Sin mediciones registradas todavía.</p>' : `
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${c.telefono ? `<button class="btn btn-success btn-sm" onclick="enviarWhatsAppBascula('${id}')">📱 WhatsApp</button>` : ''}
-        ${c.email    ? `<button class="btn btn-secondary btn-sm" onclick="enviarEmailBascula('${id}')">📧 Email</button>` : ''}
-        ${!c.telefono && !c.email ? '<span class="text-muted text-sm">Sin teléfono ni email en la ficha</span>' : ''}
-        ${ultimaConUrl ? `<span class="text-muted text-sm" style="font-size:.72rem">URL: ${ultimaConUrl.reportUrl.substring(0,40)}…</span>` : '<span class="text-muted text-sm" style="font-size:.72rem">⚠️ Sin URL de informe en la última medición</span>'}
-      </div>`}
-    </div>`;
+  const envioHtml = '';
 
   // Historial mediciones
   const filas = renderTablaHistorial(meds, id);
@@ -487,9 +475,14 @@ async function renderDetalleCliente(id) {
 function renderTablaHistorial(meds, clienteId) {
   if (!meds.length) return `<div class="empty-state"><div class="empty-icon">⚖️</div><strong>Sin mediciones</strong><p>Añade la primera medición con "⚖️ Medición"</p></div>`;
   const canDel = isSuperAdmin();
+  const c = meds[0]?.clienteId ? null : null; // se obtiene por clienteId param
   const rows = [...meds].reverse().map(m => {
     const delBtn = canDel
       ? `<button class="btn-icon" onclick="confirmarEliminarMedicion('${m.id}')" title="Eliminar">🗑️</button>` : '';
+    const sendBtns = m.reportUrl
+      ? `<button class="btn-icon" title="Enviar por WhatsApp" onclick="enviarMedicionPorWA('${clienteId}','${m.id}')">📱</button>
+         <button class="btn-icon" title="Enviar por Email" onclick="enviarMedicionPorEmail('${clienteId}','${m.id}')">📧</button>`
+      : '';
     return `<tr>
       <td>${fmtFecha(m.fecha)}</td>
       <td><strong>${m.peso??'—'}</strong></td>
@@ -499,6 +492,7 @@ function renderTablaHistorial(meds, clienteId) {
       <td>${m.puntuacion ? `<span class="badge ${badgePunt(m.puntuacion)}">${m.puntuacion}</span>` : '—'}</td>
       <td><div class="td-actions">
         <button class="btn-icon" onclick="editarMedicion('${m.id}')">✏️</button>
+        ${sendBtns}
         ${delBtn}
       </div></td>
     </tr>`;
@@ -1731,6 +1725,41 @@ async function generarInformePDF(clienteId) {
 
   doc.save(`informe_${c.nombre}_${c.apellidos}_${new Date().toISOString().slice(0,10)}.pdf`);
   toast('✅ PDF generado');
+}
+
+async function enviarMedicionPorWA(clienteId, medId) {
+  const c = await DB.get('clientes', clienteId);
+  if (!c?.telefono) { toast('El cliente no tiene teléfono', true); return; }
+  const m = await DB.get('mediciones', medId);
+  const fecha = m.fecha ? new Date(m.fecha).toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' }) : '—';
+  let msg = `Hola ${c.nombre} 👋 Aquí tienes los resultados de tu medición del ${fecha}:\n`;
+  msg += `• Peso: ${m.peso||'—'} kg\n• % Grasa: ${m.pctGrasa||'—'}%\n• Masa muscular: ${m.masaMusc||'—'} kg\n• Puntuación: ${m.puntuacion||'—'}\n`;
+  if (m.reportUrl) msg += `\n📊 Informe completo: ${m.reportUrl}`;
+  msg += `\n\n¡Seguimos trabajando! 💪`;
+  const phone = c.telefono.replace(/\D/g,'');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+async function enviarMedicionPorEmail(clienteId, medId) {
+  const c = await DB.get('clientes', clienteId);
+  if (!c?.email) { toast('El cliente no tiene email', true); return; }
+  const m = await DB.get('mediciones', medId);
+  const fecha = m.fecha ? new Date(m.fecha).toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' }) : '—';
+  const cfg = _appConfig;
+  const message = `Hola ${c.nombre},\n\nAquí tienes los resultados de tu medición del ${fecha}:\n• Peso: ${m.peso||'—'} kg\n• % Grasa: ${m.pctGrasa||'—'}%\n• Masa muscular: ${m.masaMusc||'—'} kg\n• Puntuación: ${m.puntuacion||'—'}\n${m.reportUrl ? `\nInforme completo: ${m.reportUrl}\n` : ''}\n¡Seguimos trabajando! 💪`;
+  if (!cfg.ejsKey || !cfg.ejsService || !cfg.ejsTemplate) {
+    await navigator.clipboard.writeText(message).catch(()=>{});
+    toast('Texto copiado al portapapeles (configura EmailJS para enviar directo)');
+    return;
+  }
+  try {
+    await emailjs.send(cfg.ejsService, cfg.ejsTemplate, {
+      to_email: c.email, to_name: `${c.nombre} ${c.apellidos}`,
+      from_name: cfg.nombreApp || 'NutriApp',
+      subject: `Resultados de tu medición — ${fecha}`, message
+    });
+    toast('✅ Email enviado');
+  } catch(e) { toast('Error: ' + e.message, true); }
 }
 
 async function enviarWhatsAppBascula(clienteId) {
