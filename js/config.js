@@ -8,8 +8,8 @@
 //  4. Ejecuta el archivo sql/schema.sql en el SQL Editor
 // ════════════════════════════════════════════════════════════
 
-const SUPABASE_URL  = 'https://TU_PROYECTO.supabase.co';   // ← reemplaza
-const SUPABASE_ANON = 'TU_ANON_KEY_AQUI';                  // ← reemplaza
+const SUPABASE_URL  = 'https://xyepqukxvsruptlqebfd.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_ULRURbricste8i-uwii97A_QqkatAY2';
 
 // Versión de la app
 const APP_VERSION = '3.0';
