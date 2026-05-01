@@ -91,7 +91,7 @@ async function aplicarConfiguracion() {
     const sub = cfg.subtituloApp || 'Nutrición';
     document.title = nombre;
     document.getElementById('sidebar-subtitulo').textContent = sub;
-    document.getElementById('dash-subtitulo').textContent = sub.toUpperCase();
+    document.getElementById('dash-subtitulo').textContent = sub;
 
     // Rellenar campos en settings
     const cfgNombre = document.getElementById('cfg-nombre-app');
@@ -143,7 +143,7 @@ async function guardarConfigIdentidad() {
   _appConfig.subtituloApp = subtituloApp;
   document.title = nombreApp;
   document.getElementById('sidebar-subtitulo').textContent = subtituloApp;
-  document.getElementById('dash-subtitulo').textContent = subtituloApp.toUpperCase();
+  document.getElementById('dash-subtitulo').textContent = subtituloApp;
   toast('✅ Identidad guardada');
 }
 
@@ -233,64 +233,7 @@ function renderTopbarActions(view) {
 //  DASHBOARD
 // ════════════════════════════════════════════════════════════
 async function renderDashboard() {
-  const [nCli, nMed, nMenu] = await Promise.all([
-    DB.count('clientes'), DB.count('mediciones'), DB.count('menus')
-  ]);
-  const todayStr = new Date().toISOString().slice(0,10);
-  const citasHoy = await DB.where('citas', 'fecha', todayStr);
-
-  document.getElementById('dash-stats').innerHTML = `
-    <div class="stat-card" style="cursor:pointer" onclick="navigate('clientes')">
-      <div class="stat-label">Clientes</div><div class="stat-value">${nCli}</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onclick="navigate('mediciones')">
-      <div class="stat-label">Mediciones</div><div class="stat-value">${nMed}</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onclick="navigate('menus')">
-      <div class="stat-label">Menús</div><div class="stat-value">${nMenu}</div>
-    </div>
-    <div class="stat-card" style="cursor:pointer" onclick="navigate('agenda')">
-      <div class="stat-label">Citas hoy</div><div class="stat-value">${citasHoy.length}</div>
-    </div>`;
-
-  // Actividad reciente
-  const hace7 = new Date(Date.now() - 7*24*3600*1000).toISOString();
-  const medsRecientes = await DB.whereAfter('mediciones', 'fecha', hace7, { orderBy: 'fecha', asc: false, limit: 5 });
-
-  if (!medsRecientes.length) {
-    document.getElementById('dash-ultimas-med').innerHTML =
-      `<div class="empty-state" style="padding:24px"><div class="empty-icon">📅</div><p>Sin actividad esta semana</p></div>`;
-  } else {
-    const rows = await Promise.all(medsRecientes.map(async m => {
-      const c = await DB.get('clientes', m.clienteId);
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gris-100)">
-        <span style="font-size:1.1rem">⚖️</span>
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:.85rem">${c ? c.nombre+' '+c.apellidos : '—'}</div>
-          <div style="font-size:.74rem;color:var(--gris-400)">${fmtFecha(m.fecha)} · ${m.peso??'—'} kg · ${m.pctGrasa??'—'}% grasa</div>
-        </div>
-        <button class="btn-icon" style="font-size:.75rem" onclick="navigate('cliente-detalle','${m.clienteId}')">👁️</button>
-      </div>`;
-    }));
-    document.getElementById('dash-ultimas-med').innerHTML = rows.join('');
-  }
-
-  // Acciones rápidas
-  document.getElementById('dash-alertas').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-primary" style="justify-content:flex-start;gap:12px" onclick="abrirModalMedicion()">
-        <span style="font-size:1.2rem">⚖️</span><div style="text-align:left"><div style="font-weight:700">Nueva medición</div><div style="font-size:.74rem;opacity:.8">Registrar datos de báscula</div></div>
-      </button>
-      <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px;border:1.5px solid var(--gris-200)" onclick="abrirModalMenu()">
-        <span style="font-size:1.2rem">🥗</span><div style="text-align:left"><div style="font-weight:700">Nuevo menú</div><div style="font-size:.74rem;color:var(--gris-400)">Crear menú semanal</div></div>
-      </button>
-      <button class="btn" style="background:var(--menta);border:1.5px solid var(--salvia);color:var(--verde);justify-content:flex-start;gap:12px" onclick="navigate('ia')">
-        <span style="font-size:1.2rem">🤖</span><div style="text-align:left"><div style="font-weight:700">Asistente IA</div><div style="font-size:.74rem;color:var(--verde-claro)">Claude Nutricional</div></div>
-      </button>
-      <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px;border:1.5px solid var(--gris-200)" onclick="navigate('informes')">
-        <span style="font-size:1.2rem">📊</span><div style="text-align:left"><div style="font-weight:700">Informes y envío</div><div style="font-size:.74rem;color:var(--gris-400)">PDF · WhatsApp · Email</div></div>
-      </button>
-    </div>`;
+  // El logo y subtítulo los gestiona aplicarConfiguracion() al inicio
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1311,16 +1254,41 @@ async function renderRecetas() {
     </div>`).join('')}</div>`;
 }
 
+const ES_EN = {
+  'pollo':'chicken','pechuga':'chicken breast','salmón':'salmon','salmon':'salmon',
+  'ternera':'beef','carne':'beef','cerdo':'pork','lomo':'pork loin','jamón':'ham',
+  'merluza':'hake','bacalao':'cod','atún':'tuna','dorada':'sea bream','gambas':'shrimp',
+  'huevo':'egg','huevos':'eggs','tortilla':'omelette','pasta':'pasta','arroz':'rice',
+  'lentejas':'lentils','garbanzos':'chickpeas','judías':'beans','espinacas':'spinach',
+  'calabacín':'zucchini','berenjena':'eggplant','brócoli':'broccoli','zanahoria':'carrot',
+  'tomate':'tomato','cebolla':'onion','pimiento':'pepper','ajo':'garlic','patata':'potato',
+  'aguacate':'avocado','champiñón':'mushroom','champiñones':'mushrooms','manzana':'apple',
+  'naranja':'orange','limón':'lemon','fresa':'strawberry','chocolate':'chocolate',
+  'queso':'cheese','yogur':'yogurt','leche':'milk','mantequilla':'butter',
+  'sopa':'soup','ensalada':'salad','guiso':'stew','asado':'roast','plancha':'grilled',
+  'horno':'baked','vapor':'steamed','verduras':'vegetables','fruta':'fruit'
+};
+
+function traducirBusqueda(texto) {
+  const lower = texto.toLowerCase().trim();
+  if (ES_EN[lower]) return ES_EN[lower];
+  for (const [es, en] of Object.entries(ES_EN)) {
+    if (lower.includes(es)) return lower.replace(es, en);
+  }
+  return texto;
+}
+
 async function buscarMealDB() {
   const q = document.getElementById('search-mealdb').value.trim();
   if (!q) return;
   const wrap = document.getElementById('mealdb-results');
   wrap.innerHTML = '<div class="text-muted text-sm">Buscando…</div>';
   try {
-    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(q)}`);
+    const qEn = traducirBusqueda(q);
+    const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(qEn)}`);
     const data = await res.json();
     const meals = data.meals || [];
-    if (!meals.length) { wrap.innerHTML = '<div class="text-muted text-sm">Sin resultados</div>'; return; }
+    if (!meals.length) { wrap.innerHTML = `<div class="text-muted text-sm">Sin resultados para "${q}"${qEn !== q ? ` (buscado como "${qEn}")` : ''}</div>`; return; }
     wrap.innerHTML = `<div class="recetas-grid">${meals.map(m => `
       <div class="receta-card" onclick='verRecetaModal(${JSON.stringify(m).replace(/'/g,"&#39;")})'>
         <img src="${m.strMealThumb}" alt="${m.strMeal}">
