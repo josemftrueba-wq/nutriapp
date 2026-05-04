@@ -96,10 +96,21 @@ La API de Claude permite:
 4. Ve a **API Keys** → **Create Key**
 5. Copia la clave (empieza por `sk-ant-...`)
 
-### Configurar en la app
-1. Entra en NutriApp como `super_admin`
-2. Ve a ⚙️ **Configuración** → sección **API Claude**
-3. Pega la clave y pulsa **Guardar**
+### Configurar en Vercel (forma segura)
+La clave **nunca se introduce en la app** — se almacena como variable de entorno en Vercel para que nunca llegue al navegador.
+
+1. Ve a [vercel.com](https://vercel.com) → tu proyecto `nutriapp`
+2. Pestaña **Settings** → **Environment Variables**
+3. Haz clic en **Add New**
+4. Rellena:
+   - **Key:** `ANTHROPIC_API_KEY`
+   - **Value:** `sk-ant-api…` (tu clave completa)
+   - **Environment:** marca las tres opciones (Production, Preview, Development)
+5. Pulsa **Save**
+6. Ve a la pestaña **Deployments** → en el último deploy haz clic en **⋮ → Redeploy**
+7. Espera ~1 minuto a que termine
+
+A partir de ese momento la IA estará activa en la app.
 
 ---
 
@@ -174,3 +185,19 @@ update perfiles set rol = 'super_admin' where id = (
 
 Para actualizar la app basta con hacer `git push` — Vercel despliega automáticamente.
 Los datos están en Supabase y nunca se pierden al actualizar el código.
+
+---
+
+## ⚠️ Checklist antes de dar acceso a clientes reales
+
+Pasos que deben completarse antes de que la app entre en uso clínico:
+
+| # | Acción | Quién | Estado |
+|---|--------|-------|--------|
+| A | Obtener clave API de Anthropic y añadirla como `ANTHROPIC_API_KEY` en Vercel | Lourdes / Administrador | ⏳ Pendiente |
+| B | Configurar EmailJS (Public Key + Service ID + Template ID) en ⚙️ Configuración | Lourdes | ⏳ Pendiente |
+| C | Subir el logo de la consulta en ⚙️ Configuración → Identidad | Lourdes | ⏳ Pendiente |
+| D | Publicar la Política de Privacidad (ver sección RGPD del manual) | Lourdes / Administrador | ⏳ Pendiente |
+| E | Revisar y firmar el Acuerdo de Encargado de Tratamiento con Supabase y Anthropic | Lourdes (con asesoría legal) | ⏳ Pendiente |
+
+> **Nota sobre la clave de Anthropic:** el coste es muy bajo para uso de consulta (~$5 duran varios meses). La clave se crea en [console.anthropic.com](https://console.anthropic.com) — se necesita tarjeta de crédito para la carga inicial mínima.
