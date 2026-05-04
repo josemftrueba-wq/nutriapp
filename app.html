@@ -528,13 +528,15 @@
       </div>
 
       <div class="settings-section">
-        <h4>🤖 Claude API Key</h4>
-        <p class="text-sm text-muted mb-4">Necesaria para extraer datos de PDFs e informes, y para el asistente IA.</p>
+        <h4>🤖 Claude API (IA)</h4>
+        <p class="text-sm text-muted mb-4">La clave API de Claude se configura de forma segura como variable de entorno en Vercel, nunca en la aplicación.</p>
         <div id="key-status-wrap" style="margin-bottom:10px"></div>
-        <div style="display:flex;gap:8px">
-          <input class="form-control" id="settings-api-key" type="password" placeholder="sk-ant-api…" style="flex:1">
-          <button class="btn btn-primary btn-sm" onclick="guardarApiKey()">Guardar</button>
-          <button class="btn btn-danger btn-sm" onclick="borrarApiKey()">Borrar</button>
+        <div style="background:var(--menta);border-radius:8px;padding:12px 14px;font-size:.82rem;line-height:1.7">
+          <strong>Cómo configurarla:</strong><br>
+          1. Ve a <strong>vercel.com</strong> → tu proyecto → <strong>Settings → Environment Variables</strong><br>
+          2. Añade variable: <code>ANTHROPIC_API_KEY</code> = tu clave <code>sk-ant-api…</code><br>
+          3. Haz <strong>Redeploy</strong> desde la pestaña Deployments<br>
+          La clave nunca llegará al navegador — todas las llamadas se hacen desde el servidor.
         </div>
       </div>
 

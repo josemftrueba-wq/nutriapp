@@ -5,6 +5,29 @@
 
 'use strict';
 
+// ── Seguridad: escape HTML para prevenir XSS ──────────────────
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── Proxy IA: llama a /api/ai en lugar de Anthropic directo ───
+async function llamarIA(cuerpo) {
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data;
+}
+
 // ── Estado global ─────────────────────────────────────────────
 let currentView = 'dashboard';
 let _menuActualId = null;
@@ -127,12 +150,9 @@ async function borrarApiKey() {
 }
 
 function renderKeyStatus() {
-  const k = getApiKey();
   const w = document.getElementById('key-status-wrap');
   if (!w) return;
-  w.innerHTML = k
-    ? `<span class="key-status ok">✅ Configurada — <span class="api-key-display">${k.substring(0,12)}…${k.slice(-4)}</span></span>`
-    : `<span class="key-status nok">⚠️ Sin configurar — extracción PDF e IA no disponibles</span>`;
+  w.innerHTML = `<span class="key-status ok">✅ Clave configurada en servidor (variable de entorno Vercel)</span>`;
 }
 
 async function guardarConfigIdentidad() {
@@ -707,8 +727,6 @@ function handlePdfDrop(e) {
 
 async function procesarArchivoInforme(file) {
   if (!file) return;
-  const apiKey = getApiKey();
-  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
 
   const zone = document.getElementById('pdf-drop-zone');
   const status = document.getElementById('pdf-extract-status');
@@ -728,9 +746,9 @@ async function procesarArchivoInforme(file) {
     msg.textContent = 'Claude está extrayendo los datos…';
     let datos;
     if (mediaType === 'application/pdf') {
-      datos = await extraerDatosPDF(pureB64, file.name, apiKey);
+      datos = await extraerDatosPDF(pureB64, file.name);
     } else {
-      datos = await extraerDatosImagen(pureB64, mediaType, file.name, apiKey);
+      datos = await extraerDatosImagen(pureB64, mediaType, file.name);
     }
     rellenarCamposMedicion(datos);
     status.classList.remove('show');
@@ -744,8 +762,6 @@ async function procesarArchivoInforme(file) {
 async function extraerDesdeUrl() {
   const url = document.getElementById('med-report-url').value.trim();
   if (!url) { toast('Introduce una URL primero', true); return; }
-  const apiKey = getApiKey();
-  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
 
   const status = document.getElementById('pdf-extract-status');
   const msg = document.getElementById('extract-msg');
@@ -758,22 +774,11 @@ Extrae todos los valores numéricos en este JSON (usa null si no aparece):
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}
 Responde SOLO con el JSON.`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const data = await llamarIA({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }]
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
     const json = JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
     rellenarCamposMedicion(json);
     status.classList.remove('show');
@@ -784,63 +789,41 @@ Responde SOLO con el JSON.`;
   }
 }
 
-async function extraerDatosPDF(base64, nombre, apiKey) {
+async function extraerDatosPDF(base64, nombre) {
   const prompt = `Analiza este informe de báscula / composición corporal.
 Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON (null si no aparece el dato):
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [{
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-        }, { type: 'text', text: prompt }]
-      }]
-    })
+  const data = await llamarIA({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [{
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+      }, { type: 'text', text: prompt }]
+    }]
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
   return JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
 }
 
-async function extraerDatosImagen(base64, mediaType, nombre, apiKey) {
+async function extraerDatosImagen(base64, mediaType, nombre) {
   const prompt = `Analiza esta imagen del informe de báscula / composición corporal.
 Extrae todos los valores numéricos y devuelve ÚNICAMENTE este JSON (null si no aparece):
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [{
-        role: 'user',
-        content: [{
-          type: 'image',
-          source: { type: 'base64', media_type: mediaType, data: base64 }
-        }, { type: 'text', text: prompt }]
-      }]
-    })
+  const data = await llamarIA({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [{
+        type: 'image',
+        source: { type: 'base64', media_type: mediaType, data: base64 }
+      }, { type: 'text', text: prompt }]
+    }]
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
   return JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
 }
 
@@ -1110,8 +1093,6 @@ async function editarMenuMeta(menuId) {
 // ── IA para menú ──────────────────────────────────────────────
 async function generarMenuConIA() {
   if (!_menuActualId) return;
-  const apiKey = getApiKey();
-  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
 
   const m = await DB.get('menus', _menuActualId);
   const cliente = m.clienteId ? await DB.get('clientes', m.clienteId) : null;
@@ -1136,22 +1117,11 @@ Responde ÚNICAMENTE en formato JSON:
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }]
-      })
+    const data = await llamarIA({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 2048,
+      messages: [{ role: 'user', content: prompt }]
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
     const menuIA = JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
 
     DIAS.forEach(dia => {
@@ -1320,13 +1290,12 @@ function verRecetaModal(meal) {
     const med = meal['strMeasure'+i];
     if (ing && ing.trim()) ingreds.push(`${med ? med.trim()+' ' : ''}${ing.trim()}`);
   }
-  const apiKey = getApiKey();
   document.getElementById('receta-detalle-body').innerHTML = `
     <div style="display:flex;gap:20px;flex-wrap:wrap">
-      <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="width:200px;border-radius:10px;object-fit:cover">
+      <img src="${meal.strMealThumb}" alt="${escapeHtml(meal.strMeal)}" style="width:200px;border-radius:10px;object-fit:cover">
       <div style="flex:1;min-width:200px">
-        <div class="badge badge-verde mb-4">${meal.strCategory||''} · ${meal.strArea||''}</div>
-        ${apiKey ? `<button class="btn btn-ambar btn-sm mb-4" onclick="traducirRecetaConIA()">🤖 Traducir al español + info nutricional</button>` : `<p class="text-muted text-sm mb-4" style="font-size:.75rem">⚠️ Ingredientes en inglés (configura API Claude para traducir automáticamente)</p>`}
+        <div class="badge badge-verde mb-4">${escapeHtml(meal.strCategory||'')} · ${escapeHtml(meal.strArea||'')}</div>
+        <button class="btn btn-ambar btn-sm mb-4" onclick="traducirRecetaConIA()">🤖 Traducir al español + info nutricional</button>
         <h4 style="margin-bottom:10px;color:var(--verde)" id="receta-ing-titulo">Ingredientes</h4>
         <ul id="receta-ing-lista" style="font-size:.85rem;line-height:1.8;padding-left:16px">${ingreds.map(i=>`<li>${i}</li>`).join('')}</ul>
       </div>
@@ -1339,8 +1308,6 @@ function verRecetaModal(meal) {
 async function traducirRecetaConIA() {
   const meal = _recetaModal;
   if (!meal) return;
-  const apiKey = getApiKey();
-  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
 
   const btn = document.querySelector('#receta-detalle-body .btn-ambar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Traduciendo…'; }
@@ -1370,12 +1337,7 @@ Responde SOLO con este JSON:
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
+    const data = await llamarIA({ model: 'claude-haiku-4-5', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] });
     const json = JSON.parse(data.content[0].text.match(/\{[\s\S]+\}/)[0]);
 
     document.getElementById('receta-ing-titulo').textContent = 'Ingredientes';
@@ -1975,8 +1937,6 @@ function limpiarChatIA() {
 }
 
 async function enviarMensajeIA() {
-  const apiKey = getApiKey();
-  if (!apiKey) { toast('Configura la clave API de Claude primero', true); return; }
 
   const input = document.getElementById('ia-input');
   const msg   = input.value.trim();
@@ -1985,8 +1945,8 @@ async function enviarMensajeIA() {
   const clienteId = document.getElementById('ia-cliente-sel').value;
   const msgs = document.getElementById('ia-chat-messages');
 
-  // Añadir mensaje usuario
-  msgs.innerHTML += `<div class="ia-msg user">${msg}</div>`;
+  // Añadir mensaje usuario (escapado para prevenir XSS)
+  msgs.innerHTML += `<div class="ia-msg user">${escapeHtml(msg)}</div>`;
   input.value = '';
   const thinking = document.createElement('div');
   thinking.className = 'ia-msg thinking';
@@ -2011,28 +1971,18 @@ async function enviarMensajeIA() {
   btn.disabled = true;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2048,
-        system: 'Eres un asistente nutricional profesional y empático. Ayudas a nutricionistas con análisis de pacientes, planes de alimentación, interpretación de composición corporal y comunicación con clientes. Responde siempre en español.',
-        messages: _iaHistorial.slice(-10)
-      })
+    const data = await llamarIA({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 2048,
+      system: 'Eres un asistente nutricional profesional y empático. Ayudas a nutricionistas con análisis de pacientes, planes de alimentación, interpretación de composición corporal y comunicación con clientes. Responde siempre en español.',
+      messages: _iaHistorial.slice(-10)
     });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
 
     const reply = data.content[0].text;
     _iaHistorial.push({ role: 'assistant', content: reply });
     thinking.remove();
-    msgs.innerHTML += `<div class="ia-msg assistant">${reply}</div>`;
+    // escapeHtml + preservar saltos de línea para la respuesta del asistente
+    msgs.innerHTML += `<div class="ia-msg assistant">${escapeHtml(reply).replace(/\n/g,'<br>')}</div>`;
   } catch(e) {
     thinking.textContent = '❌ Error: ' + e.message;
   } finally {
