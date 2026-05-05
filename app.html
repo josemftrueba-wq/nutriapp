@@ -65,6 +65,9 @@
     </div>
     <button onclick="openModal('modal-settings')" style="background:rgba(255,255,255,.12);border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.9rem;flex-shrink:0;" title="Configuración">⚙️</button>
   </div>
+  <div style="padding:8px 16px 12px;text-align:center">
+    <a href="/privacidad.html" target="_blank" style="font-size:.7rem;color:rgba(255,255,255,.45);text-decoration:none;">🔒 Política de privacidad</a>
+  </div>
 </nav>
 
 <!-- MAIN -->
@@ -267,6 +270,16 @@
       </div>
       <div class="form-group"><label>Objetivo</label><input class="form-control" id="c-objetivo" placeholder="Perder peso, mejorar composición…"></div>
       <div class="form-group"><label>Notas</label><textarea class="form-control" id="c-notas" placeholder="Alergias, patologías, preferencias…"></textarea></div>
+      <div class="form-group" style="background:#e8f5ee;border-radius:8px;padding:12px 14px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:400">
+          <input type="checkbox" id="c-consentimiento" style="margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:var(--verde)">
+          <span style="font-size:.83rem;line-height:1.5">
+            El cliente ha sido informado y otorga su consentimiento explícito al tratamiento de sus datos de salud (Art. 9.2.a RGPD), incluyendo el uso de servicios de terceros para análisis nutricional.
+            <a href="/privacidad.html" target="_blank" style="color:var(--verde);display:inline-block;margin-top:2px">Ver política de privacidad ↗</a>
+          </span>
+        </label>
+        <div id="c-consentimiento-fecha" style="font-size:.75rem;color:var(--gris-400);margin-top:6px;padding-left:26px"></div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-cliente')">Cancelar</button>

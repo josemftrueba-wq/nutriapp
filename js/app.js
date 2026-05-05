@@ -307,6 +307,7 @@ async function renderClientes(filtro = '') {
       <td>${c.telefono||'—'}</td><td>${c.email||'—'}</td>
       <td>${nMed} med.</td>
       <td style="${alerta}">${ultima ? ultima.peso+' kg · '+fmtFechaCorta(ultima.fecha)+(diasSin>30?' ⚠️':'') : '—'}</td>
+      <td title="${c.consentimientoRgpd ? 'RGPD: consentimiento registrado el '+new Date(c.consentimientoFecha).toLocaleDateString('es-ES') : 'RGPD: falta consentimiento'}">${c.consentimientoRgpd ? '✅' : '⚠️'}</td>
       <td><div class="td-actions" onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="editarCliente('${c.id}')" title="Editar">✏️</button>
         ${delBtn}
@@ -314,7 +315,7 @@ async function renderClientes(filtro = '') {
     </tr>`;
   }).join('');
 
-  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Email</th><th>Medic.</th><th>Última medición</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Email</th><th>Medic.</th><th>Última medición</th><th title="Consentimiento RGPD">RGPD</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function filtrarClientes() { renderClientes(document.getElementById('search-clientes').value); }
@@ -327,6 +328,13 @@ function abrirModalCliente(c = null) {
     if (el) el.value = c?.[f] || '';
   });
   document.getElementById('c-fnac').value = c?.fnac || '';
+  // Consentimiento RGPD
+  const chk = document.getElementById('c-consentimiento');
+  const fechaEl = document.getElementById('c-consentimiento-fecha');
+  if (chk) chk.checked = !!c?.consentimientoRgpd;
+  if (fechaEl) fechaEl.textContent = c?.consentimientoFecha
+    ? `Consentimiento otorgado el ${new Date(c.consentimientoFecha).toLocaleDateString('es-ES')}`
+    : '';
   openModal('modal-cliente');
 }
 
@@ -338,6 +346,14 @@ async function guardarCliente() {
   const apellidos = document.getElementById('c-apellidos').value.trim();
   if (!nombre || !apellidos) { toast('Nombre y apellidos son obligatorios', true); return; }
 
+  // Consentimiento RGPD: si se marca por primera vez, registrar fecha
+  const consentimientoMarcado = document.getElementById('c-consentimiento')?.checked || false;
+  const clienteExistente = id ? await DB.get('clientes', id).catch(() => null) : null;
+  const yaTeníaConsentimiento = !!clienteExistente?.consentimientoRgpd;
+  const consentimientoFecha = consentimientoMarcado
+    ? (yaTeníaConsentimiento ? clienteExistente.consentimientoFecha : new Date().toISOString())
+    : null;
+
   const data = {
     nombre, apellidos,
     fnac:     document.getElementById('c-fnac').value || null,
@@ -347,6 +363,8 @@ async function guardarCliente() {
     email:    document.getElementById('c-email').value.trim() || null,
     objetivo: document.getElementById('c-objetivo').value.trim() || null,
     notas:    document.getElementById('c-notas').value.trim() || null,
+    consentimientoRgpd:   consentimientoMarcado,
+    consentimientoFecha:  consentimientoFecha,
   };
 
   try {
@@ -398,6 +416,10 @@ async function renderDetalleCliente(id) {
           ${c.telefono ? `<span class="pill">📱 ${c.telefono}</span>` : ''}
           ${c.email ? `<span class="pill">📧 ${c.email}</span>` : ''}
           <span class="pill">📊 ${meds.length} mediciones</span>
+          ${c.consentimientoRgpd
+            ? `<span class="pill" style="background:#d4edda;color:#1e4035" title="Consentimiento RGPD registrado el ${c.consentimientoFecha ? new Date(c.consentimientoFecha).toLocaleDateString('es-ES') : '—'}">✅ RGPD</span>`
+            : `<span class="pill" style="background:#fff3cd;color:#856404" title="Falta registrar el consentimiento RGPD">⚠️ Sin consentimiento RGPD</span>`
+          }
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1102,9 +1124,10 @@ async function generarMenuConIA() {
     ultimaMed = meds.at(-1);
   }
 
+  // RGPD 2.1: solo datos clínicos, sin nombre ni datos identificativos
   const contexto = cliente
-    ? `Cliente: ${cliente.nombre} ${cliente.apellidos}, objetivo: ${cliente.objetivo||'No definido'}. ${ultimaMed ? `Última medición: ${ultimaMed.peso} kg, ${ultimaMed.pctGrasa}% grasa, TMB: ${ultimaMed.tmb} kcal.` : ''}`
-    : 'Sin cliente asignado.';
+    ? `Paciente: [PACIENTE], sexo: ${cliente.sexo||'no indicado'}, objetivo: ${cliente.objetivo||'No definido'}. ${ultimaMed ? `Última medición: ${ultimaMed.peso} kg, ${ultimaMed.pctGrasa}% grasa, TMB: ${ultimaMed.tmb} kcal.` : ''}`
+    : 'Sin paciente asignado.';
 
   toast('🤖 Generando menú con IA…');
 
@@ -1961,7 +1984,8 @@ async function enviarMensajeIA() {
       const c = await DB.get('clientes', clienteId);
       const meds = await DB.where('mediciones', 'clienteId', clienteId, { orderBy: 'fecha' });
       const menus = await DB.where('menus', 'clienteId', clienteId, { orderBy: 'createdAt', asc: false, limit: 2 });
-      contexto = `\n[CONTEXTO CLIENTE: ${c.nombre} ${c.apellidos}, ${c.objetivo||''}. ${c.notas||''}\nÚltimas mediciones: ${meds.slice(-3).map(m=>`${fmtFechaCorta(m.fecha)}: ${m.peso}kg ${m.pctGrasa}%grasa ${m.masaMusc}kg músculo punt.${m.puntuacion}`).join(' | ')}\nMenús: ${menus.map(m=>m.nombre).join(', ')}]`;
+      // RGPD 2.1: contexto clínico anonimizado — sin nombre, apellidos ni email
+      contexto = `\n[PACIENTE: sexo ${c.sexo||'no indicado'}, objetivo: ${c.objetivo||'—'}.\nMediciones recientes: ${meds.slice(-3).map(m=>`${fmtFechaCorta(m.fecha)}: ${m.peso}kg ${m.pctGrasa}%grasa ${m.masaMusc}kg músculo punt.${m.puntuacion}`).join(' | ')}\nMenús recientes: ${menus.map(m=>m.nombre).join(', ')}]`;
     } catch {}
   }
 
