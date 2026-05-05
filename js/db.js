@@ -140,9 +140,24 @@ const DB = {
     return count || 0;
   },
 
-  // ── Búsqueda de texto ────────────────────────────────────────
+  // ── Búsqueda de texto (un campo) ────────────────────────────
   async search(table, field, term, opts = {}) {
     let q = _sb().from(table).select('*').ilike(_toSnake(field), `%${term}%`);
+    if (opts.orderBy) q = q.order(_toSnake(opts.orderBy), { ascending: opts.asc ?? true });
+    const { data, error } = await q;
+    if (error) throw error;
+    return _arrToCamel(data);
+  },
+
+  // ── Búsqueda en múltiples campos (5.3 server-side search) ──────
+  async searchMulti(table, fields, term, opts = {}) {
+    let q = _sb().from(table).select('*');
+    // Construir condición OR: el primer campo como or(), los demás con or()
+    if (fields && fields.length > 0) {
+      q = q.or(
+        fields.map(f => `${_toSnake(f)}.ilike.%${term}%`).join(',')
+      );
+    }
     if (opts.orderBy) q = q.order(_toSnake(opts.orderBy), { ascending: opts.asc ?? true });
     const { data, error } = await q;
     if (error) throw error;

@@ -451,9 +451,10 @@ async function renderDashboard() {
 // ════════════════════════════════════════════════════════════
 async function renderClientes(filtro = '') {
   const sortMode = document.getElementById('sort-clientes')?.value || 'nombre';
-  let lista = await DB.list('clientes');
-  if (filtro) lista = lista.filter(c =>
-    `${c.nombre} ${c.apellidos}`.toLowerCase().includes(filtro.toLowerCase()));
+  // 5.3 Server-side search: buscar en servidor en lugar de cliente
+  let lista = filtro
+    ? await DB.searchMulti('clientes', ['nombre', 'apellidos'], filtro)
+    : await DB.list('clientes');
 
   const enrich = await Promise.all(lista.map(async c => {
     const meds = await DB.where('mediciones', 'clienteId', c.id, { orderBy: 'fecha' });
@@ -517,7 +518,7 @@ async function renderClientes(filtro = '') {
       <button class="btn btn-secondary btn-sm" onclick="cambiarPaginaClientes(1)" ${_clientePagina >= totalPags - 1 ? 'disabled' : ''}>Siguiente ›</button>
     </div>` : '';
 
-  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Email</th><th>Medic.</th><th>Última medición</th><th title="Consentimiento RGPD">RGPD</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>${paginador}`;
+  wrap.innerHTML = `<table><thead><tr><th scope="col">Cliente</th><th scope="col">Teléfono</th><th scope="col">Email</th><th scope="col">Medic.</th><th scope="col">Última medición</th><th scope="col" title="Consentimiento RGPD">RGPD</th><th scope="col">Acciones</th></tr></thead><tbody>${rows}</tbody></table>${paginador}`;
 }
 
 function cambiarPaginaClientes(delta) {
@@ -618,6 +619,14 @@ async function renderDetalleCliente(id) {
   const ultima = meds.at(-1);
   const primera = meds[0];
 
+  // 5.2 Breadcrumbs
+  const breadcrumbs = `
+    <div style="display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--gris-400);margin-bottom:16px">
+      <a href="#" onclick="navigate('clientes');return false" style="color:var(--verde);cursor:pointer;text-decoration:none">Clientes</a>
+      <span>/</span>
+      <span>${escapeHtml(c.nombre)} ${escapeHtml(c.apellidos)}</span>
+    </div>`;
+
   // Header
   let header = `
     <div class="client-header-card">
@@ -700,7 +709,7 @@ async function renderDetalleCliente(id) {
       <div class="card-body"><div class="chart-container"><canvas id="chart-cliente-${id}"></canvas></div></div>
     </div>` : '';
 
-  document.getElementById('detalle-content').innerHTML = header + statsHtml + envioHtml + graficaHtml + `
+  document.getElementById('detalle-content').innerHTML = breadcrumbs + header + statsHtml + envioHtml + graficaHtml + `
     <div class="tabs">
       <div class="tab active" onclick="switchTab(this,'tab-historial-${id}')">📊 Historial mediciones</div>
       <div class="tab" onclick="switchTab(this,'tab-menus-${id}')">🥗 Menús</div>
@@ -848,7 +857,7 @@ async function renderMediciones(filtro = '') {
     </tr>`;
   }).join('');
 
-  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Fecha</th><th>Peso (kg)</th><th>% Grasa</th><th>Músculo (kg)</th><th>Punt.</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>`;
+  wrap.innerHTML = `<table><thead><tr><th scope="col">Cliente</th><th scope="col">Fecha</th><th scope="col">Peso (kg)</th><th scope="col">% Grasa</th><th scope="col">Músculo (kg)</th><th scope="col">Punt.</th><th scope="col">Acciones</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function filtrarMediciones() { renderMediciones(document.getElementById('search-mediciones').value); }

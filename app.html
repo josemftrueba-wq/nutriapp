@@ -253,9 +253,9 @@
 ══════════════════════════════════════════════════════════ -->
 
 <!-- MODAL CLIENTE -->
-<div class="modal-overlay" id="modal-cliente">
-  <div class="modal">
-    <div class="modal-header"><h3 id="modal-cliente-title">Nuevo cliente</h3><button class="modal-close" onclick="closeModal('modal-cliente')">✕</button></div>
+<div class="modal-overlay" id="modal-cliente" role="presentation" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-title">
+    <div class="modal-header"><h3 id="modal-cliente-title">Nuevo cliente</h3><button class="modal-close" onclick="closeModal('modal-cliente')" aria-label="Cerrar diálogo">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="cliente-id">
       <div class="form-row form-row-2">
@@ -292,9 +292,9 @@
 </div>
 
 <!-- MODAL MEDICIÓN -->
-<div class="modal-overlay" id="modal-medicion">
-  <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="modal-med-title">Nueva medición</h3><button class="modal-close" onclick="closeModal('modal-medicion')">✕</button></div>
+<div class="modal-overlay" id="modal-medicion" role="presentation" aria-hidden="true">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="modal-med-title">
+    <div class="modal-header"><h3 id="modal-med-title">Nueva medición</h3><button class="modal-close" onclick="closeModal('modal-medicion')" aria-label="Cerrar diálogo">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="med-id">
       <input type="hidden" id="med-pdf-base64">
@@ -385,9 +385,9 @@
 </div>
 
 <!-- MODAL MENÚ -->
-<div class="modal-overlay" id="modal-menu">
-  <div class="modal">
-    <div class="modal-header"><h3 id="modal-menu-title">Nuevo menú</h3><button class="modal-close" onclick="closeModal('modal-menu')">✕</button></div>
+<div class="modal-overlay" id="modal-menu" role="presentation" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-menu-title">
+    <div class="modal-header"><h3 id="modal-menu-title">Nuevo menú</h3><button class="modal-close" onclick="closeModal('modal-menu')" aria-label="Cerrar diálogo">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="menu-id">
       <div class="form-group"><label>Nombre del menú *</label><input class="form-control" id="menu-nombre" placeholder="Menú semana 1 — Pérdida de peso"></div>
@@ -406,9 +406,9 @@
 </div>
 
 <!-- MODAL PLATO -->
-<div class="modal-overlay" id="modal-plato">
-  <div class="modal">
-    <div class="modal-header"><h3 id="modal-plato-title">Nuevo plato</h3><button class="modal-close" onclick="closeModal('modal-plato')">✕</button></div>
+<div class="modal-overlay" id="modal-plato" role="presentation" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-plato-title">
+    <div class="modal-header"><h3 id="modal-plato-title">Nuevo plato</h3><button class="modal-close" onclick="closeModal('modal-plato')" aria-label="Cerrar diálogo">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="plato-id">
       <div class="form-row form-row-2">
@@ -438,9 +438,9 @@
 </div>
 
 <!-- MODAL CITA -->
-<div class="modal-overlay" id="modal-cita">
-  <div class="modal">
-    <div class="modal-header"><h3 id="modal-cita-title">Nueva cita</h3><button class="modal-close" onclick="closeModal('modal-cita')">✕</button></div>
+<div class="modal-overlay" id="modal-cita" role="presentation" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-cita-title">
+    <div class="modal-header"><h3 id="modal-cita-title">Nueva cita</h3><button class="modal-close" onclick="closeModal('modal-cita')" aria-label="Cerrar diálogo">✕</button></div>
     <div class="modal-body">
       <input type="hidden" id="cita-id">
       <div class="form-group"><label>Cliente</label><select class="form-control" id="cita-cliente"><option value="">Sin asignar</option></select></div>
