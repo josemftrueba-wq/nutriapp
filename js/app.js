@@ -16,6 +16,40 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ── Validación de formularios ─────────────────────────────────
+function validarCampo(valor, { min, max, etiqueta } = {}) {
+  const n = parseFloat(valor);
+  if (valor === '' || valor == null) return null; // vacío = OK
+  if (isNaN(n)) return `${etiqueta}: debe ser un número`;
+  if (min !== undefined && n < min) return `${etiqueta}: mínimo ${min}`;
+  if (max !== undefined && n > max) return `${etiqueta}: máximo ${max}`;
+  return null;
+}
+function validarEmail(email) {
+  if (!email) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? null : 'Email con formato inválido';
+}
+
+// ── Estado de carga en botones ────────────────────────────────
+function setBtnLoading(btn, loading, textoOriginal) {
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn._textoOriginal = btn.textContent;
+    btn.textContent = '⏳ Guardando…';
+  } else {
+    btn.disabled = false;
+    btn.textContent = textoOriginal || btn._textoOriginal || btn.textContent;
+  }
+}
+
+// ── Manejo centralizado de errores ────────────────────────────
+function handleError(error, contexto = 'operación') {
+  console.error(`[NutriApp] Error en ${contexto}:`, error);
+  const msg = error?.message || String(error) || 'Error desconocido';
+  toast(`❌ Error en ${contexto}: ${msg}`, true);
+}
+
 // ── Proxy IA: llama a /api/ai en lugar de Anthropic directo ───
 async function llamarIA(cuerpo) {
   const res = await fetch('/api/ai', {
@@ -173,14 +207,14 @@ async function guardarEmailJS() {
   const tm = document.getElementById('ejs-template').value.trim();
   await DB.updateConfig({ ejsKey: k, ejsService: sv, ejsTemplate: tm });
   _appConfig = { ..._appConfig, ejsKey: k, ejsService: sv, ejsTemplate: tm };
-  if (k) try { emailjs.init(k); } catch(e) {}
+  if (k) try { emailjs.init(k); } catch(e) { console.warn('[NutriApp] EmailJS init:', e.message); }
   document.getElementById('ejs-status').textContent = k ? '✅ Guardado' : '— Vacío';
   toast('✅ EmailJS guardado');
 }
 
 function initEmailJS() {
   const k = _appConfig.ejsKey;
-  if (k) try { emailjs.init(k); } catch(e) {}
+  if (k) try { emailjs.init(k); } catch(e) { console.warn('[NutriApp] EmailJS init:', e.message); }
 }
 
 function subirLogo() {
@@ -341,10 +375,18 @@ function abrirModalCliente(c = null) {
 async function editarCliente(id) { abrirModalCliente(await DB.get('clientes', id)); }
 
 async function guardarCliente() {
+  const btn = document.querySelector('#modal-cliente .btn-primary');
   const id = document.getElementById('cliente-id').value;
   const nombre    = document.getElementById('c-nombre').value.trim();
   const apellidos = document.getElementById('c-apellidos').value.trim();
   if (!nombre || !apellidos) { toast('Nombre y apellidos son obligatorios', true); return; }
+  const emailVal = document.getElementById('c-email').value.trim();
+  const alturaVal = document.getElementById('c-altura').value;
+  const errEmail  = validarEmail(emailVal);
+  const errAltura = validarCampo(alturaVal, { min: 50, max: 250, etiqueta: 'Altura' });
+  if (errEmail)  { toast(errEmail, true); return; }
+  if (errAltura) { toast(errAltura, true); return; }
+  setBtnLoading(btn, true);
 
   // Consentimiento RGPD: si se marca por primera vez, registrar fecha
   const consentimientoMarcado = document.getElementById('c-consentimiento')?.checked || false;
@@ -372,7 +414,8 @@ async function guardarCliente() {
     else    { await DB.add('clientes', data); toast('✅ Cliente creado'); }
     closeModal('modal-cliente');
     renderClientes();
-  } catch (e) { toast(e.message, true); }
+  } catch (e) { handleError(e, 'guardar cliente'); }
+  finally { setBtnLoading(btn, false, '💾 Guardar'); }
 }
 
 function confirmarEliminarCliente(id, nombre) {
@@ -689,10 +732,20 @@ async function abrirModalMedicion(preselId = null, m = null) {
 async function editarMedicion(id) { abrirModalMedicion(null, await DB.get('mediciones', id)); }
 
 async function guardarMedicion() {
+  const btn = document.querySelector('#modal-medicion .btn-primary');
   const id = document.getElementById('med-id').value;
   const clienteId = document.getElementById('med-cliente').value;
   const fecha     = document.getElementById('med-fecha').value;
   if (!clienteId || !fecha) { toast('Cliente y fecha son obligatorios', true); return; }
+  const validaciones = [
+    validarCampo(document.getElementById('med-peso')?.value,        { min: 1,  max: 500, etiqueta: 'Peso' }),
+    validarCampo(document.getElementById('med-pct-grasa')?.value,   { min: 0,  max: 100, etiqueta: '% Grasa' }),
+    validarCampo(document.getElementById('med-pct-musc-esq')?.value,{ min: 0,  max: 100, etiqueta: '% Músculo esq.' }),
+    validarCampo(document.getElementById('med-imc')?.value,         { min: 5,  max: 80,  etiqueta: 'IMC' }),
+    validarCampo(document.getElementById('med-tmb')?.value,         { min: 500,max: 5000,etiqueta: 'TMB' }),
+  ].filter(Boolean);
+  if (validaciones.length) { toast(validaciones[0], true); return; }
+  setBtnLoading(btn, true);
 
   const n = id => parseFloatOrNull(document.getElementById('med-'+id)?.value);
   const data = {
@@ -719,7 +772,8 @@ async function guardarMedicion() {
     closeModal('modal-medicion');
     if (currentView === 'mediciones') renderMediciones();
     else if (currentView === 'cliente-detalle') renderDetalleCliente(clienteId);
-  } catch (e) { toast(e.message, true); }
+  } catch (e) { handleError(e, 'guardar medición'); }
+  finally { setBtnLoading(btn, false, '💾 Guardar'); }
 }
 
 function confirmarEliminarMedicion(id) {
@@ -750,12 +804,19 @@ function handlePdfDrop(e) {
 async function procesarArchivoInforme(file) {
   if (!file) return;
 
+  // 3.5 Límite de tamaño para controlar coste de tokens (máx 4 MB)
+  const MAX_MB = 4;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    toast(`⚠️ El archivo pesa ${(file.size/1024/1024).toFixed(1)} MB. Máximo permitido: ${MAX_MB} MB (coste de tokens). Usa la URL del informe en su lugar.`, true);
+    return;
+  }
+
   const zone = document.getElementById('pdf-drop-zone');
   const status = document.getElementById('pdf-extract-status');
   const msg  = document.getElementById('extract-msg');
   zone.classList.add('has-pdf');
   status.classList.add('show');
-  msg.textContent = `Leyendo ${file.name}…`;
+  msg.textContent = `Leyendo ${escapeHtml(file.name)}…`;
 
   try {
     const base64 = await fileToBase64(file);
@@ -950,7 +1011,7 @@ async function guardarMenu() {
     closeModal('modal-menu');
     toast('✅ Menú creado');
     navigate('menu-detalle', nuevo.id);
-  } catch(e) { toast(e.message, true); }
+  } catch(e) { handleError(e, 'crear menú'); }
 }
 
 async function duplicarMenu(menuId) {
@@ -1206,8 +1267,10 @@ function abrirModalPlato(p = null) {
 async function editarPlato(id) { abrirModalPlato(await DB.get('platos', id)); }
 
 async function guardarPlato() {
+  const btn = document.querySelector('#modal-plato .btn-primary');
   const nombre = document.getElementById('p-nombre').value.trim();
   if (!nombre) { toast('El nombre es obligatorio', true); return; }
+  setBtnLoading(btn, true);
   const id = document.getElementById('plato-id').value;
   const data = {
     nombre,
@@ -1225,7 +1288,8 @@ async function guardarPlato() {
     else    { await DB.add('platos', data); toast('✅ Plato añadido al banco'); }
     closeModal('modal-plato');
     renderPlatos();
-  } catch(e) { toast(e.message, true); }
+  } catch(e) { handleError(e, 'guardar plato'); }
+  finally { setBtnLoading(btn, false, '💾 Guardar'); }
 }
 
 async function eliminarPlato(id) {
@@ -1575,9 +1639,11 @@ async function editarCita(id) {
 }
 
 async function guardarCita() {
+  const btn = document.querySelector('#modal-cita .btn-primary');
   const id = document.getElementById('cita-id').value;
   const fecha = document.getElementById('cita-fecha').value;
   if (!fecha) { toast('La fecha es obligatoria', true); return; }
+  setBtnLoading(btn, true);
   const data = {
     clienteId: document.getElementById('cita-cliente').value || null,
     fecha, hora: document.getElementById('cita-hora').value || null,
@@ -1589,7 +1655,8 @@ async function guardarCita() {
     else    { await DB.add('citas', data); toast('✅ Cita guardada'); }
     closeModal('modal-cita');
     renderCalendario(); cargarListaCitas();
-  } catch(e) { toast(e.message, true); }
+  } catch(e) { handleError(e, 'guardar cita'); }
+  finally { setBtnLoading(btn, false, '💾 Guardar'); }
 }
 
 function confirmarEliminarCita(id) {
@@ -1986,7 +2053,7 @@ async function enviarMensajeIA() {
       const menus = await DB.where('menus', 'clienteId', clienteId, { orderBy: 'createdAt', asc: false, limit: 2 });
       // RGPD 2.1: contexto clínico anonimizado — sin nombre, apellidos ni email
       contexto = `\n[PACIENTE: sexo ${c.sexo||'no indicado'}, objetivo: ${c.objetivo||'—'}.\nMediciones recientes: ${meds.slice(-3).map(m=>`${fmtFechaCorta(m.fecha)}: ${m.peso}kg ${m.pctGrasa}%grasa ${m.masaMusc}kg músculo punt.${m.puntuacion}`).join(' | ')}\nMenús recientes: ${menus.map(m=>m.nombre).join(', ')}]`;
-    } catch {}
+    } catch(e) { console.warn('[NutriApp] Contexto IA no disponible:', e.message); }
   }
 
   _iaHistorial.push({ role: 'user', content: msg + contexto });
