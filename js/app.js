@@ -64,6 +64,8 @@ async function llamarIA(cuerpo) {
 
 // ── Estado global ─────────────────────────────────────────────
 let currentView = 'dashboard';
+let _clientePagina = 0;
+const CLIENTES_POR_PAG = 20;
 let _menuActualId = null;
 let _menuActualClienteId = null;
 let _pdfBase64Actual = null;
@@ -114,14 +116,28 @@ const viewTitles = {
   // Inicializar EmailJS si está configurado
   initEmailJS();
 
-  // Render inicial
-  navigate('dashboard');
+  // Render inicial: usar hash si existe, si no dashboard
+  const initHash = window.location.hash.slice(1);
+  const [initView, initExtra] = initHash ? initHash.split('/') : ['dashboard'];
+  navigate(initView || 'dashboard', initExtra || undefined);
 
   // PWA service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();
+
+// 4.2 Botón atrás/adelante del navegador
+window.addEventListener('popstate', e => {
+  const state = e.state;
+  if (state?.view) {
+    navigate(state.view, state.extra || undefined);
+  } else {
+    const hash = window.location.hash.slice(1);
+    const [v, ex] = hash ? hash.split('/') : ['dashboard'];
+    navigate(v || 'dashboard', ex || undefined);
+  }
+});
 
 // ════════════════════════════════════════════════════════════
 //  CONFIGURACIÓN
@@ -244,9 +260,15 @@ async function eliminarLogo() {
 }
 
 // ════════════════════════════════════════════════════════════
-//  NAVEGACIÓN
+//  NAVEGACIÓN + HASH ROUTING
 // ════════════════════════════════════════════════════════════
 function navigate(view, extra) {
+  // 4.2 Hash routing: actualizar URL sin recargar ni disparar popstate
+  const targetHash = extra ? `${view}/${extra}` : view;
+  if (window.location.hash !== '#' + targetHash) {
+    history.pushState({ view, extra: extra || null }, '', '#' + targetHash);
+  }
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const el = document.getElementById('view-' + view);
   if (!el) { console.warn('Vista no encontrada:', view); return; }
@@ -289,6 +311,139 @@ function renderTopbarActions(view) {
 // ════════════════════════════════════════════════════════════
 async function renderDashboard() {
   // El logo y subtítulo los gestiona aplicarConfiguracion() al inicio
+  const kpisEl   = document.getElementById('dash-kpis');
+  const panelsEl = document.getElementById('dash-panels');
+  if (!kpisEl || !panelsEl) return;
+
+  // Esqueleto de carga mientras llegan los datos
+  kpisEl.innerHTML = ['','','',''].map(() =>
+    `<div style="background:var(--gris-100);border-radius:12px;height:88px;animation:pulse 1.4s ease-in-out infinite"></div>`
+  ).join('');
+  panelsEl.innerHTML = '';
+
+  try {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    // Cargar datos en paralelo
+    const [clientes, todasMed, todasCitas] = await Promise.all([
+      DB.list('clientes'),
+      DB.list('mediciones', { orderBy: 'fecha', asc: false }),
+      DB.list('citas', { orderBy: 'fecha' })
+    ]);
+
+    // ── KPI 1: Total clientes ──────────────────────────────────
+    const totalCli = clientes.length;
+
+    // ── KPI 2: Citas de hoy ────────────────────────────────────
+    const citasHoy = todasCitas.filter(c => c.fecha === hoy);
+
+    // ── KPI 3: Clientes sin medición en >30 días ───────────────
+    const ultimaMedPorCliente = {};
+    todasMed.forEach(m => {
+      if (!ultimaMedPorCliente[m.clienteId] || m.fecha > ultimaMedPorCliente[m.clienteId]) {
+        ultimaMedPorCliente[m.clienteId] = m.fecha;
+      }
+    });
+    const sinMed30 = clientes.filter(c => {
+      const ult = ultimaMedPorCliente[c.id];
+      return !ult || ult < hace30;
+    }).length;
+
+    // ── KPI 4: Próxima cita ────────────────────────────────────
+    const proximasCitas = todasCitas.filter(c => c.fecha >= hoy);
+    const proxima = proximasCitas[0] || null;
+
+    // Mapa de clientes para resolución rápida
+    const cliMap = Object.fromEntries(clientes.map(c => [c.id, c]));
+
+    // ── Render KPIs ────────────────────────────────────────────
+    const kpiStyle = 'background:var(--blanco);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow-sm);cursor:default';
+    const kpiNum   = 'font-size:2rem;font-weight:700;line-height:1;margin-bottom:4px';
+    const kpiLbl   = 'font-size:.75rem;color:var(--gris-400);font-weight:500;letter-spacing:.5px;text-transform:uppercase';
+
+    kpisEl.innerHTML = `
+      <div style="${kpiStyle};border-left:4px solid var(--verde);cursor:pointer" onclick="navigate('clientes')">
+        <div style="${kpiNum};color:var(--verde)">${totalCli}</div>
+        <div style="${kpiLbl}">Clientes activos</div>
+      </div>
+      <div style="${kpiStyle};border-left:4px solid var(--azul,#3b82f6);cursor:pointer" onclick="navigate('agenda')">
+        <div style="${kpiNum};color:var(--azul,#3b82f6)">${citasHoy.length}</div>
+        <div style="${kpiLbl}">Citas hoy</div>
+      </div>
+      <div style="${kpiStyle};border-left:4px solid ${sinMed30 > 0 ? 'var(--ambar,#f59e0b)' : 'var(--gris-300)'};cursor:pointer" onclick="navigate('clientes')">
+        <div style="${kpiNum};color:${sinMed30 > 0 ? 'var(--ambar,#f59e0b)' : 'var(--gris-300)'}">${sinMed30}</div>
+        <div style="${kpiLbl}">Sin medición &gt;30 días</div>
+      </div>
+      <div style="${kpiStyle};border-left:4px solid var(--salvia)">
+        <div style="${kpiNum};color:var(--salvia);font-size:1.1rem;padding-top:4px">
+          ${proxima
+            ? `${fmtFechaCorta(proxima.fecha)} ${proxima.hora || ''}`
+            : '—'}
+        </div>
+        <div style="${kpiLbl}">Próxima cita</div>
+        ${proxima
+          ? `<div style="font-size:.75rem;color:var(--gris-400);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml((cliMap[proxima.clienteId]?.nombre || '') + ' ' + (cliMap[proxima.clienteId]?.apellidos || ''))}</div>`
+          : ''}
+      </div>`;
+
+    // ── Panel citas de hoy ─────────────────────────────────────
+    const panelCitas = citasHoy.length
+      ? citasHoy.map(ci => {
+          const c = cliMap[ci.clienteId];
+          const nombre = c ? `${escapeHtml(c.nombre)} ${escapeHtml(c.apellidos)}` : '—';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--gris-100)">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--menta);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--verde);flex-shrink:0">${c ? c.nombre[0]+c.apellidos[0] : '?'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
+              <div style="font-size:.75rem;color:var(--gris-400)">${ci.hora || 'Sin hora'} · ${escapeHtml(ci.motivo || 'Sin motivo')}</div>
+            </div>
+            ${c ? `<button class="btn-icon" onclick="navigate('cliente-detalle','${c.id}')" title="Ver ficha">👤</button>` : ''}
+          </div>`;
+        }).join('')
+      : `<div style="padding:24px 0;text-align:center;color:var(--gris-400);font-size:.88rem">Sin citas para hoy 🎉</div>`;
+
+    // ── Panel últimas mediciones ───────────────────────────────
+    const ultimas3 = todasMed.slice(0, 5);
+    const panelMed = ultimas3.length
+      ? ultimas3.map(m => {
+          const c = cliMap[m.clienteId];
+          const nombre = c ? `${escapeHtml(c.nombre)} ${escapeHtml(c.apellidos)}` : '—';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--gris-100)">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--menta);display:flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:700;color:var(--verde);flex-shrink:0">${c ? c.nombre[0]+c.apellidos[0] : '⚖'}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nombre}</div>
+              <div style="font-size:.75rem;color:var(--gris-400)">${fmtFechaCorta(m.fecha)} · ${m.peso ? m.peso+' kg' : ''}${m.imc ? ' · IMC '+m.imc : ''}</div>
+            </div>
+            ${c ? `<button class="btn-icon" onclick="navigate('cliente-detalle','${c.id}')" title="Ver ficha">👤</button>` : ''}
+          </div>`;
+        }).join('')
+      : `<div style="padding:24px 0;text-align:center;color:var(--gris-400);font-size:.88rem">Sin mediciones registradas</div>`;
+
+    const cardStyle = 'background:var(--blanco);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow-sm)';
+    const cardTitle = 'font-weight:700;font-size:.82rem;letter-spacing:.5px;text-transform:uppercase;color:var(--gris-400);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between';
+
+    panelsEl.innerHTML = `
+      <div style="${cardStyle}">
+        <div style="${cardTitle}">
+          <span>📅 Citas de hoy</span>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('agenda')" style="font-size:.72rem;padding:2px 8px">Ver agenda</button>
+        </div>
+        ${panelCitas}
+      </div>
+      <div style="${cardStyle}">
+        <div style="${cardTitle}">
+          <span>⚖️ Últimas mediciones</span>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('mediciones')" style="font-size:.72rem;padding:2px 8px">Ver todas</button>
+        </div>
+        ${panelMed}
+      </div>`;
+
+  } catch (e) {
+    handleError(e, 'dashboard');
+    kpisEl.innerHTML = '';
+    panelsEl.innerHTML = '';
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -321,13 +476,19 @@ async function renderClientes(filtro = '') {
   const wrap = document.getElementById('tabla-clientes-wrap');
   if (!enrich.length) {
     wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><strong>Sin clientes</strong><p>Pulsa "+ Nuevo cliente" para empezar</p></div>`;
+    _clientePagina = 0;
     return;
   }
 
-  // Botón eliminar solo para super_admin
+  // 4.3 Paginación cliente-side (20 por página)
+  const total = enrich.length;
+  const totalPags = Math.ceil(total / CLIENTES_POR_PAG);
+  if (_clientePagina >= totalPags) _clientePagina = totalPags - 1;
+  const pagina = enrich.slice(_clientePagina * CLIENTES_POR_PAG, (_clientePagina + 1) * CLIENTES_POR_PAG);
+
   const canDelete = isSuperAdmin();
 
-  const rows = enrich.map(({ c, nMed, ultima }) => {
+  const rows = pagina.map(({ c, nMed, ultima }) => {
     const diasSin = ultima ? Math.floor((Date.now() - new Date(ultima.fecha)) / 86400000) : null;
     const alerta = diasSin !== null && diasSin > 60 ? 'color:var(--rojo)' : diasSin > 30 ? 'color:var(--ambar)' : '';
     const delBtn = canDelete
@@ -349,7 +510,19 @@ async function renderClientes(filtro = '') {
     </tr>`;
   }).join('');
 
-  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Email</th><th>Medic.</th><th>Última medición</th><th title="Consentimiento RGPD">RGPD</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const paginador = totalPags > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:10px 0;font-size:.85rem;color:var(--gris-400)">
+      <span>${_clientePagina * CLIENTES_POR_PAG + 1}–${Math.min((_clientePagina + 1) * CLIENTES_POR_PAG, total)} de ${total} clientes</span>
+      <button class="btn btn-secondary btn-sm" onclick="cambiarPaginaClientes(-1)" ${_clientePagina === 0 ? 'disabled' : ''}>‹ Anterior</button>
+      <button class="btn btn-secondary btn-sm" onclick="cambiarPaginaClientes(1)" ${_clientePagina >= totalPags - 1 ? 'disabled' : ''}>Siguiente ›</button>
+    </div>` : '';
+
+  wrap.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Email</th><th>Medic.</th><th>Última medición</th><th title="Consentimiento RGPD">RGPD</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table>${paginador}`;
+}
+
+function cambiarPaginaClientes(delta) {
+  _clientePagina = Math.max(0, _clientePagina + delta);
+  renderClientes(document.getElementById('search-clientes')?.value || '');
 }
 
 function filtrarClientes() { renderClientes(document.getElementById('search-clientes').value); }

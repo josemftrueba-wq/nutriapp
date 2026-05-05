@@ -150,6 +150,7 @@ tbody td{padding:10px 13px;color:var(--gris-900);vertical-align:middle;}
 .pdf-extract-status.show{display:flex;}
 .spinner{width:17px;height:17px;border-radius:50%;border:2.5px solid var(--menta);border-top-color:var(--verde);animation:spin .7s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
 
 /* ── CONFIGURACIÓN ───────────────────────────────────────── */
 .settings-section{margin-bottom:22px;}
@@ -264,4 +265,5 @@ tbody td{padding:10px 13px;color:var(--gris-900);vertical-align:middle;}
 @media(max-width:600px){
   .grid-2{grid-template-columns:1fr;}
   .form-row-2,.form-row-3{grid-template-columns:1fr;}
+  #dash-panels{grid-template-columns:1fr;}
 }
