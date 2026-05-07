@@ -1040,7 +1040,7 @@ Extrae todos los valores numéricos en este JSON (usa null si no aparece):
 Responde SOLO con el JSON.`;
 
     const data = await llamarIA({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-1',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -1060,7 +1060,7 @@ Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-opus-4-1',
     max_tokens: 1024,
     messages: [{
       role: 'user',
@@ -1079,7 +1079,7 @@ Extrae todos los valores numéricos y devuelve ÚNICAMENTE este JSON (null si no
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-opus-4-1',
     max_tokens: 1024,
     messages: [{
       role: 'user',
@@ -1384,7 +1384,7 @@ Responde ÚNICAMENTE en formato JSON:
 
   try {
     const data = await llamarIA({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-1',
       max_tokens: 2048,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -2245,7 +2245,7 @@ async function enviarMensajeIA() {
 
   try {
     const data = await llamarIA({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-1',
       max_tokens: 2048,
       system: 'Eres un asistente nutricional profesional y empático. Ayudas a nutricionistas con análisis de pacientes, planes de alimentación, interpretación de composición corporal y comunicación con clientes. Responde siempre en español.',
       messages: _iaHistorial.slice(-10)
