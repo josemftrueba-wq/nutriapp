@@ -1055,16 +1055,86 @@ Responde SOLO con el JSON.`;
 }
 
 async function extraerDatosPDF(base64, nombre) {
-  const prompt = `Analiza este informe de báscula / composición corporal.
-⚠️ CRÍTICO - LEER CON ATENCIÓN:
-- Para "Músculo (kg)" o "masaMusc": Busca la LÍNEA GRÁFICA de Músculo. El valor correcto es el PUNTO FINAL/DERECHA de esa línea (más reciente en la timeline). NUNCA valores intermedios dentro del gráfico.
-- Para "% Grasa" o "pctGrasa": Busca la LÍNEA GRÁFICA de % Grasa. El valor correcto es el PUNTO FINAL/DERECHA de esa línea.
-- Para otros datos en gráficos: Siempre el PUNTO FINAL de la línea, no intermedio.
-Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON (null si no aparece el dato):
+  const prompt = `Eres un extractor de datos de informes de báscula Unique Health de composición corporal.
+El documento puede ser uno de DOS formatos distintos. Identifica cuál es:
+
+══ FORMATO A: "Informe de medición" ══
+Título arriba a la izquierda: "Informe de medición". Fondo azul degradado.
+Ubicación EXACTA de cada dato:
+- peso → Sección "Análisis de composición corporal", texto "Peso(XX.X–XX.X)" junto al gráfico circular. Es el peso total en kg.
+- puntuacion → Número grande dentro del gráfico circular de "Puntuación de salud" (ej: 88, 92, 95).
+- agua → Sección composición, fila "Agua corporal total" → valor en kg.
+- proteina → Sección composición, fila "Masa proteica" → valor en kg.
+- minerales → Sección composición, fila "Minerales" → valor en kg.
+- masaGrasa → Sección composición, fila "Masa Grasa" → valor en kg.
+- pctGrasa → Sección "Análisis de obesidad", fila "Porcentaje de Grasa(%)" → valor numérico.
+- grasaSubcut → Sección "Otros indicadores", fila "Masa grasa subcutánea" → valor en kg.
+- pctGrasaSub → NO aparece en este formato → null.
+- gv → Sección "Otros indicadores", fila "Grasa visceral" → número entero.
+- mlg → Sección "Otros indicadores", fila "Masa Libre de Grasa" → valor en kg.
+- masaMusc → Sección "Análisis de grasa seglar" o "Masa muscular" en el diagrama corporal. Es el valor total de masa muscular en kg. Si hay gráfico temporal, tomar el PUNTO MÁS A LA DERECHA.
+- muscEsq → Sección "Análisis muscular seglar", valor de músculo esquelético en kg. Si no aparece explícito → null.
+- pctMuscEsq → NO suele aparecer en este formato → null.
+- osea → Diagrama corporal o tabla, "masa ósea" en kg.
+- fc → Frecuencia cardíaca si aparece (bpm). Frecuentemente no está → null.
+- aguaEc → NO aparece en este formato → null.
+- aguaIc → NO aparece en este formato → null.
+- tmb → Sección "Control de peso", fila "TMB (Tasa Metabólica Basal)" → valor en kcal.
+- ingestaRec → Sección "Otros indicadores", fila "ingesta calórica recomendada" → valor en kcal/Día.
+- imc → Sección "Análisis de obesidad", fila "IMC (Indice de Masa...)" → valor numérico.
+- nivelAdip → Sección "Análisis de obesidad", fila "Nivel de adiposidad" → número entero.
+- pctProteinas → Sección "Análisis de obesidad", fila "Porcentaje de Grasa(%)" NO es este. Buscar "Porcentaje proteínas" si existe, si no → null.
+- cc → Relación cintura-caderas si aparece → valor decimal. Si no → null.
+- edadCorp → Sección "Otros indicadores", fila "Edad Corporal" → número entero.
+- pesoEstandar → Sección "Control de peso", fila "Peso estándar" → valor en kg.
+- controlPeso → Sección "Control de peso", fila "Control de Peso" → valor en kg (puede ser negativo).
+- gradoObesidad → Sección "Análisis de obesidad", columna "Grado de Obesidad" si aparece. Si no → null.
+
+══ FORMATO B: "Informe de análisis de composición humana" ══
+Título: "Unique Health — Informe de análisis de composición humana". Fondo blanco/gris.
+Ubicación EXACTA de cada dato:
+- peso → Sección "Composición del cuerpo humano", el número grande junto al gráfico circular (ej: 96.05kg).
+- puntuacion → Arriba a la derecha, "Puntuación física" → número grande (ej: 92).
+- agua → Sección "Composición del cuerpo humano", fila "Agua corporal" → primer número en kg.
+- proteina → Sección "Composición del cuerpo humano", fila "Masa proteica(kg)" → valor en kg.
+- minerales → Sección "Composición del cuerpo humano", fila "Minerales(kg)" → valor en kg.
+- masaGrasa → Sección "Composición del cuerpo humano", fila "Masa Grasa(kg)" → valor en kg.
+- pctGrasa → Sección "Análisis de grasa", fila "Porcentaje de Grasa(%)" → valor numérico. También puede estar en "Síntesis del cuerpo" como "Porcentaje de Grasa(%)".
+- grasaSubcut → Sección "Análisis de grasa", fila "Masa grasa subcutánea(kg)" → valor en kg.
+- pctGrasaSub → Sección "Análisis de grasa", fila "Porcentaje de Grasa Subcutánea(%)" → valor numérico.
+- gv → Sección "Análisis de grasa", fila "Grasa visceral" → número entero.
+- mlg → Sección "Análisis de grasa", fila "Masa Libre de Grasa(kg)" → valor en kg.
+- masaMusc → Sección "Situación musculoesquelética", fila "Masa Muscular(kg)" → primer valor numérico (el medido, NO el rango).
+- muscEsq → Sección "Situación musculoesquelética", fila "Masa Muscular Esquelética" o "Maso Muscular Esquelét(kg)" → valor en kg.
+- pctMuscEsq → NO suele tener porcentaje explícito → null.
+- osea → Sección "Situación musculoesquelética", fila "Masa Ósea(kg)" → valor en kg.
+- fc → Sección "Síntesis del cuerpo", fila "Frecuencia Cardíaca" → valor en bpm.
+- aguaEc → Sección "Situación de las células del cuerpo", "Agua extracelular(kg)" → valor en kg.
+- aguaIc → Sección "Situación de las células del cuerpo", "Agua intracelular(kg)" → valor en kg.
+- tmb → Sección "Síntesis del cuerpo", fila "TMB (Tasa Metabólica Basal)(kcal)" → valor en kcal.
+- ingestaRec → Sección "Consejos sobre la situación física", fila "ingesta calórica recomendada" → valor en kcal.
+- imc → Sección "Síntesis del cuerpo", fila "IMC (Indice de Masa corporal)" → valor numérico.
+- nivelAdip → Sección "Síntesis del cuerpo", fila "Nivel de adiposidad(%)" → número.
+- pctProteinas → Sección "Síntesis del cuerpo", fila "Porcentaje de Proteínas" → valor numérico.
+- cc → Sección "Síntesis del cuerpo", fila "Relación cintura-caderas" → valor decimal.
+- edadCorp → Sección "Consejos sobre la situación física", fila "Edad Corporal" → número entero.
+- pesoEstandar → Sección "Consejos sobre la situación física", fila "Peso estándar" → valor en kg.
+- controlPeso → Sección "Consejos sobre la situación física", fila "Control de Peso" → valor en kg (puede ser negativo).
+- gradoObesidad → Sección "Consejos sobre la situación física", fila "Grado de Obesidad" → texto o nivel.
+
+⚠️ REGLAS CRÍTICAS:
+1. Identifica PRIMERO si es Formato A o Formato B.
+2. Usa SOLO las ubicaciones descritas para el formato detectado.
+3. Cada valor debe venir de SU sección específica. NO mezclar valores entre secciones.
+4. Si un dato tiene gráfico temporal (línea con varios puntos), toma siempre el PUNTO MÁS A LA DERECHA (más reciente).
+5. Si un campo no aparece en el formato detectado, pon null.
+6. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+
+Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-opus-4-1',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
     messages: [{
       role: 'user',
@@ -1078,16 +1148,86 @@ Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON
 }
 
 async function extraerDatosImagen(base64, mediaType, nombre) {
-  const prompt = `Analiza esta imagen del informe de báscula / composición corporal.
-⚠️ CRÍTICO - LEER CON ATENCIÓN:
-- Para "Músculo (kg)" o "masaMusc": Busca la LÍNEA GRÁFICA de Músculo. El valor correcto es el PUNTO FINAL/DERECHA de esa línea (más reciente en la timeline). NUNCA valores intermedios dentro del gráfico.
-- Para "% Grasa" o "pctGrasa": Busca la LÍNEA GRÁFICA de % Grasa. El valor correcto es el PUNTO FINAL/DERECHA de esa línea.
-- Para otros datos en gráficos: Siempre el PUNTO FINAL de la línea, no intermedio.
-Extrae todos los valores numéricos y devuelve ÚNICAMENTE este JSON (null si no aparece):
+  const prompt = `Eres un extractor de datos de informes de báscula Unique Health de composición corporal.
+El documento puede ser uno de DOS formatos distintos. Identifica cuál es:
+
+══ FORMATO A: "Informe de medición" ══
+Título arriba a la izquierda: "Informe de medición". Fondo azul degradado.
+Ubicación EXACTA de cada dato:
+- peso → Sección "Análisis de composición corporal", texto "Peso(XX.X–XX.X)" junto al gráfico circular. Es el peso total en kg.
+- puntuacion → Número grande dentro del gráfico circular de "Puntuación de salud" (ej: 88, 92, 95).
+- agua → Sección composición, fila "Agua corporal total" → valor en kg.
+- proteina → Sección composición, fila "Masa proteica" → valor en kg.
+- minerales → Sección composición, fila "Minerales" → valor en kg.
+- masaGrasa → Sección composición, fila "Masa Grasa" → valor en kg.
+- pctGrasa → Sección "Análisis de obesidad", fila "Porcentaje de Grasa(%)" → valor numérico.
+- grasaSubcut → Sección "Otros indicadores", fila "Masa grasa subcutánea" → valor en kg.
+- pctGrasaSub → NO aparece en este formato → null.
+- gv → Sección "Otros indicadores", fila "Grasa visceral" → número entero.
+- mlg → Sección "Otros indicadores", fila "Masa Libre de Grasa" → valor en kg.
+- masaMusc → Sección "Análisis de grasa seglar" o "Masa muscular" en el diagrama corporal. Es el valor total de masa muscular en kg. Si hay gráfico temporal, tomar el PUNTO MÁS A LA DERECHA.
+- muscEsq → Sección "Análisis muscular seglar", valor de músculo esquelético en kg. Si no aparece explícito → null.
+- pctMuscEsq → NO suele aparecer en este formato → null.
+- osea → Diagrama corporal o tabla, "masa ósea" en kg.
+- fc → Frecuencia cardíaca si aparece (bpm). Frecuentemente no está → null.
+- aguaEc → NO aparece en este formato → null.
+- aguaIc → NO aparece en este formato → null.
+- tmb → Sección "Control de peso", fila "TMB (Tasa Metabólica Basal)" → valor en kcal.
+- ingestaRec → Sección "Otros indicadores", fila "ingesta calórica recomendada" → valor en kcal/Día.
+- imc → Sección "Análisis de obesidad", fila "IMC (Indice de Masa...)" → valor numérico.
+- nivelAdip → Sección "Análisis de obesidad", fila "Nivel de adiposidad" → número entero.
+- pctProteinas → Buscar "Porcentaje proteínas" si existe, si no → null.
+- cc → Relación cintura-caderas si aparece → valor decimal. Si no → null.
+- edadCorp → Sección "Otros indicadores", fila "Edad Corporal" → número entero.
+- pesoEstandar → Sección "Control de peso", fila "Peso estándar" → valor en kg.
+- controlPeso → Sección "Control de peso", fila "Control de Peso" → valor en kg (puede ser negativo).
+- gradoObesidad → Sección "Análisis de obesidad", columna "Grado de Obesidad" si aparece. Si no → null.
+
+══ FORMATO B: "Informe de análisis de composición humana" ══
+Título: "Unique Health — Informe de análisis de composición humana". Fondo blanco/gris.
+Ubicación EXACTA de cada dato:
+- peso → Sección "Composición del cuerpo humano", el número grande junto al gráfico circular (ej: 96.05kg).
+- puntuacion → Arriba a la derecha, "Puntuación física" → número grande (ej: 92).
+- agua → Sección "Composición del cuerpo humano", fila "Agua corporal" → primer número en kg.
+- proteina → Sección "Composición del cuerpo humano", fila "Masa proteica(kg)" → valor en kg.
+- minerales → Sección "Composición del cuerpo humano", fila "Minerales(kg)" → valor en kg.
+- masaGrasa → Sección "Composición del cuerpo humano", fila "Masa Grasa(kg)" → valor en kg.
+- pctGrasa → Sección "Análisis de grasa", fila "Porcentaje de Grasa(%)" → valor numérico.
+- grasaSubcut → Sección "Análisis de grasa", fila "Masa grasa subcutánea(kg)" → valor en kg.
+- pctGrasaSub → Sección "Análisis de grasa", fila "Porcentaje de Grasa Subcutánea(%)" → valor numérico.
+- gv → Sección "Análisis de grasa", fila "Grasa visceral" → número entero.
+- mlg → Sección "Análisis de grasa", fila "Masa Libre de Grasa(kg)" → valor en kg.
+- masaMusc → Sección "Situación musculoesquelética", fila "Masa Muscular(kg)" → primer valor numérico (el medido, NO el rango).
+- muscEsq → Sección "Situación musculoesquelética", fila "Masa Muscular Esquelética" → valor en kg.
+- pctMuscEsq → NO suele tener porcentaje explícito → null.
+- osea → Sección "Situación musculoesquelética", fila "Masa Ósea(kg)" → valor en kg.
+- fc → Sección "Síntesis del cuerpo", fila "Frecuencia Cardíaca" → valor en bpm.
+- aguaEc → Sección "Situación de las células del cuerpo", "Agua extracelular(kg)" → valor en kg.
+- aguaIc → Sección "Situación de las células del cuerpo", "Agua intracelular(kg)" → valor en kg.
+- tmb → Sección "Síntesis del cuerpo", fila "TMB (Tasa Metabólica Basal)(kcal)" → valor en kcal.
+- ingestaRec → Sección "Consejos sobre la situación física", fila "ingesta calórica recomendada" → valor en kcal.
+- imc → Sección "Síntesis del cuerpo", fila "IMC (Indice de Masa corporal)" → valor numérico.
+- nivelAdip → Sección "Síntesis del cuerpo", fila "Nivel de adiposidad(%)" → número.
+- pctProteinas → Sección "Síntesis del cuerpo", fila "Porcentaje de Proteínas" → valor numérico.
+- cc → Sección "Síntesis del cuerpo", fila "Relación cintura-caderas" → valor decimal.
+- edadCorp → Sección "Consejos sobre la situación física", fila "Edad Corporal" → número entero.
+- pesoEstandar → Sección "Consejos sobre la situación física", fila "Peso estándar" → valor en kg.
+- controlPeso → Sección "Consejos sobre la situación física", fila "Control de Peso" → valor en kg (puede ser negativo).
+- gradoObesidad → Sección "Consejos sobre la situación física", fila "Grado de Obesidad" → texto o nivel.
+
+⚠️ REGLAS CRÍTICAS:
+1. Identifica PRIMERO si es Formato A o Formato B.
+2. Usa SOLO las ubicaciones descritas para el formato detectado.
+3. Cada valor debe venir de SU sección específica. NO mezclar valores entre secciones.
+4. Si un dato tiene gráfico temporal (línea con varios puntos), toma siempre el PUNTO MÁS A LA DERECHA (más reciente).
+5. Si un campo no aparece en el formato detectado, pon null.
+6. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+
+Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-opus-4-1',
+    model: 'claude-sonnet-4-20250514',
     max_tokens: 1024,
     messages: [{
       role: 'user',
