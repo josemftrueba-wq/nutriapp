@@ -1056,6 +1056,7 @@ Responde SOLO con el JSON.`;
 
 async function extraerDatosPDF(base64, nombre) {
   const prompt = `Analiza este informe de báscula / composición corporal.
+⚠️ IMPORTANTE: Para datos mostrados en GRÁFICOS (% Grasa, Músculo kg, etc.), extrae el VALOR AL FINAL de la línea (más reciente), NO puntos intermedios.
 Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON (null si no aparece el dato):
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
@@ -1075,6 +1076,7 @@ Extrae todos los valores numéricos disponibles y devuelve ÚNICAMENTE este JSON
 
 async function extraerDatosImagen(base64, mediaType, nombre) {
   const prompt = `Analiza esta imagen del informe de báscula / composición corporal.
+⚠️ IMPORTANTE: Para datos mostrados en GRÁFICOS (% Grasa, Músculo kg, etc.), extrae el VALOR AL FINAL de la línea (más reciente), NO puntos intermedios.
 Extrae todos los valores numéricos y devuelve ÚNICAMENTE este JSON (null si no aparece):
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
