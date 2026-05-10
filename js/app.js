@@ -1122,20 +1122,37 @@ Ubicación EXACTA de cada dato:
 - controlPeso → Sección "Consejos sobre la situación física", fila "Control de Peso" → valor en kg (puede ser negativo).
 - gradoObesidad → Sección "Consejos sobre la situación física", fila "Grado de Obesidad" → texto o nivel.
 
-⚠️ REGLAS CRÍTICAS:
+⚠️⚠️⚠️ REGLA MÁS IMPORTANTE — BARRAS HORIZONTALES ⚠️⚠️⚠️
+Casi todos los valores aparecen en BARRAS HORIZONTALES de colores (pueden ser verdes, naranjas, rojas, azules o cualquier otro color). Cada fila con barra tiene esta estructura:
+- ENCIMA o A LO LARGO de la barra: varios números separados que son RANGOS DE REFERENCIA (ej: 47.5, 65.3 o 10, 20). IGNÓRALOS.
+- La barra de color se extiende hasta un punto.
+- El VALOR REAL DEL PACIENTE es el número que aparece AL FINAL EXTREMO DERECHO de la fila, DESPUÉS o DEBAJO de la barra. Es el número MÁS A LA DERECHA de toda la fila, independientemente del color de la barra.
+
+EJEMPLO VISUAL (Formato B, "Masa Muscular(kg)"):
+  "47.5    65.3    ████████████████●  70.3"
+  Los 47.5 y 65.3 son rangos → IGNORAR. El 70.3 es el VALOR REAL → usar este.
+
+EJEMPLO VISUAL (Formato A, "IMC"):
+  "12  14  16  18  19  20  21  23  29  36  43"
+  "████████████ 31.7"
+  Los números de arriba son la escala → IGNORAR. El 31.7 es el VALOR REAL.
+
+Para cada campo con barra de CUALQUIER color: toma SIEMPRE el número más a la derecha de la fila, que es el valor medido del paciente.
+
+OTRAS REGLAS:
 1. Identifica PRIMERO si es Formato A o Formato B.
 2. Usa SOLO las ubicaciones descritas para el formato detectado.
 3. Cada valor debe venir de SU sección específica. NO mezclar valores entre secciones.
-4. Si un dato tiene gráfico temporal (línea con varios puntos), toma siempre el PUNTO MÁS A LA DERECHA (más reciente).
-5. Si un campo no aparece en el formato detectado, pon null.
-6. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+4. Si un campo no aparece en el formato detectado, pon null.
+5. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+6. Para campos como "Agua corporal total", "Masa proteica", etc. que aparecen en tabla simple (sin barra), usa el valor numérico directo de la columna de valor.
 
 Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
     model: 'claude-opus-4-1',
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{
       role: 'user',
       content: [{
@@ -1215,20 +1232,37 @@ Ubicación EXACTA de cada dato:
 - controlPeso → Sección "Consejos sobre la situación física", fila "Control de Peso" → valor en kg (puede ser negativo).
 - gradoObesidad → Sección "Consejos sobre la situación física", fila "Grado de Obesidad" → texto o nivel.
 
-⚠️ REGLAS CRÍTICAS:
+⚠️⚠️⚠️ REGLA MÁS IMPORTANTE — BARRAS HORIZONTALES ⚠️⚠️⚠️
+Casi todos los valores aparecen en BARRAS HORIZONTALES de colores (pueden ser verdes, naranjas, rojas, azules o cualquier otro color). Cada fila con barra tiene esta estructura:
+- ENCIMA o A LO LARGO de la barra: varios números separados que son RANGOS DE REFERENCIA (ej: 47.5, 65.3 o 10, 20). IGNÓRALOS.
+- La barra de color se extiende hasta un punto.
+- El VALOR REAL DEL PACIENTE es el número que aparece AL FINAL EXTREMO DERECHO de la fila, DESPUÉS o DEBAJO de la barra. Es el número MÁS A LA DERECHA de toda la fila, independientemente del color de la barra.
+
+EJEMPLO VISUAL (Formato B, "Masa Muscular(kg)"):
+  "47.5    65.3    ████████████████●  70.3"
+  Los 47.5 y 65.3 son rangos → IGNORAR. El 70.3 es el VALOR REAL → usar este.
+
+EJEMPLO VISUAL (Formato A, "IMC"):
+  "12  14  16  18  19  20  21  23  29  36  43"
+  "████████████ 31.7"
+  Los números de arriba son la escala → IGNORAR. El 31.7 es el VALOR REAL.
+
+Para cada campo con barra de CUALQUIER color: toma SIEMPRE el número más a la derecha de la fila, que es el valor medido del paciente.
+
+OTRAS REGLAS:
 1. Identifica PRIMERO si es Formato A o Formato B.
 2. Usa SOLO las ubicaciones descritas para el formato detectado.
 3. Cada valor debe venir de SU sección específica. NO mezclar valores entre secciones.
-4. Si un dato tiene gráfico temporal (línea con varios puntos), toma siempre el PUNTO MÁS A LA DERECHA (más reciente).
-5. Si un campo no aparece en el formato detectado, pon null.
-6. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+4. Si un campo no aparece en el formato detectado, pon null.
+5. Devuelve solo números (sin unidades). Negativos permitidos para controlPeso.
+6. Para campos como "Agua corporal total", "Masa proteica", etc. que aparecen en tabla simple (sin barra), usa el valor numérico directo de la columna de valor.
 
 Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
     model: 'claude-opus-4-1',
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{
       role: 'user',
       content: [{
