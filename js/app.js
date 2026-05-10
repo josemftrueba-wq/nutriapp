@@ -1134,7 +1134,7 @@ Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-opus-4-1',
     max_tokens: 1024,
     messages: [{
       role: 'user',
@@ -1227,7 +1227,7 @@ Devuelve ÚNICAMENTE este JSON:
 {"peso":null,"puntuacion":null,"agua":null,"proteina":null,"minerales":null,"masaGrasa":null,"pctGrasa":null,"grasaSubcut":null,"pctGrasaSub":null,"gv":null,"mlg":null,"masaMusc":null,"muscEsq":null,"pctMuscEsq":null,"osea":null,"fc":null,"aguaEc":null,"aguaIc":null,"tmb":null,"ingestaRec":null,"imc":null,"nivelAdip":null,"pctProteinas":null,"cc":null,"edadCorp":null,"pesoEstandar":null,"controlPeso":null,"gradoObesidad":null}`;
 
   const data = await llamarIA({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-opus-4-1',
     max_tokens: 1024,
     messages: [{
       role: 'user',
