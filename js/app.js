@@ -943,7 +943,7 @@ async function guardarMedicion() {
     controlPeso: n('control-peso'),
     gradoObesidad: document.getElementById('med-grado-obesidad')?.value || null,
     nota:         document.getElementById('med-nota')?.value.trim() || null,
-    pdfBase64:    document.getElementById('med-pdf-base64').value || null,
+    
     pdfName:      document.getElementById('med-pdf-name').value || null,
     reportUrl:    document.getElementById('med-report-url').value.trim() || null,
   };
